@@ -11,7 +11,7 @@ VAR_OUTPUT
 	bSuccess				: BOOL;
 END_VAR
 VAR_IN_OUT
-	bSetVelo					: BOOL;
+	bSetVelocity			: BOOL;
 END_VAR
 VAR
 	eMotionState			: (WAIT_FOR_TRIGGER, ENABLE_DEVICE, SET_LIMIT, SET_VELOCITY, VALIDATE_VELOCITY, ACKNOWLEDGE_VELOCITY);
@@ -25,7 +25,7 @@ VAR
 	nStatusword				: UINT;
 	bGetStatusword			: BOOL;
 	bExecuteWait			: BOOL;
-	bSetVelocity			: BOOL;
+	bWriteToFB				: BOOL;
 	fFlag		 			: F_TRIG;
 	nVelocityLimitMin		: UINT;
 	nVelocityLimitMax		: UINT;
@@ -37,7 +37,7 @@ END_VAR]]></Declaration>
       <ST><![CDATA[CASE eMotionState OF
 	WAIT_FOR_TRIGGER:
 		MAIN.Controlword := 0;
-		IF bSetVelo THEN
+		IF bSetVelocity THEN
 			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 				msgFmtStr := 'Enable Device',
 				strArg := '');
@@ -45,7 +45,7 @@ END_VAR]]></Declaration>
 		END_IF	
 
 	ENABLE_DEVICE:
-		fbEnableDevice (bTrigger := bSetVelo,
+		fbEnableDevice (bTrigger := bSetVelocity,
 						bSuccess => bSuccess,
 						sNetId := sNetId,
 						nSlaveAddr := nSlaveAddr);
@@ -99,21 +99,21 @@ END_VAR]]></Declaration>
 	
 	SET_VELOCITY:
 		//set velocity
-		bSetVelocity := TRUE;
+		bWriteToFB := TRUE;
 		fbSetVelocity(sNetId := sNetID,
 					nSlaveAddr := nSlaveAddr,
 					nSubIndex := 0,
 					nIndex := 16#6042,
 					pSrcBuf := ADR(nTargetVelocity),
 					cbBufLen := SIZEOF(nTargetVelocity),
-					bExecute := bSetVelocity);
+					bExecute := bWriteToFB);
 		MAIN.TargetVelocity := nTargetVelocity;
 		fFlag.CLK := fbSetVelocity.bBusy; //falling edge at acknowledge of FB
 		
 		IF fbSetVelocity.bError THEN
 			//Error when setting Target Velocity
 			bSuccess := FALSE;
-			bSetVelocity := FALSE;
+			bWriteToFB := FALSE;
 			eMotionState := WAIT_FOR_TRIGGER;
 		END_IF
 		IF fFlag.Q THEN
@@ -140,7 +140,7 @@ END_VAR]]></Declaration>
 				msgFmtStr := 'Velocity is valid',
 				strArg := '');
 			ELSE 
-				bSetVelocity := FALSE;
+				bWriteToFB := FALSE;
 				bSuccess := FALSE;
 				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 					msgFmtStr := 'Error when validating velocity',
@@ -154,19 +154,7 @@ END_CASE
 ]]></ST>
     </Implementation>
     <LineIds Name="VelocityMode">
-      <LineId Id="779" Count="44" />
-      <LineId Id="894" Count="0" />
-      <LineId Id="884" Count="3" />
-      <LineId Id="896" Count="0" />
-      <LineId Id="898" Count="0" />
-      <LineId Id="897" Count="0" />
-      <LineId Id="889" Count="1" />
-      <LineId Id="899" Count="2" />
-      <LineId Id="893" Count="0" />
-      <LineId Id="892" Count="0" />
-      <LineId Id="895" Count="0" />
-      <LineId Id="888" Count="0" />
-      <LineId Id="826" Count="54" />
+      <LineId Id="1081" Count="116" />
       <LineId Id="19" Count="0" />
     </LineIds>
   </POU>

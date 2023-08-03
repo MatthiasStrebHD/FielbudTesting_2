@@ -3,36 +3,14 @@
   <POU Name="P_VelocityModeTest" Id="{20dbc57a-bcdc-4d5e-be58-5c2d209d0155}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM P_VelocityModeTest
 VAR
-	fbMoveInProfilePosition			: Motion;
-	fbGetCurrentPosition			: FB_EcCoeSdoRead;
+	fbVelocityMode					: VelocityMode;
 	fbGetStatusword					: FB_EcCoeSdoRead;
-	fbGetPositionWindow				: FB_EcCoeSdoRead;
-	fbGetPositionDemandValue		: FB_EcCoeSdoRead;
-	tWaitForCurrentPosition			: TON;
-	tWaitForPositionDemandValue		: TON;
-	tGetStatusword					: TON;
-	bGetCurrentPosition				: BOOL;
-	bMove							: BOOL; 
-	bExecuteTimer					: BOOL;
-	bGetStatusword					: BOOL;
-	bGetParameters					: BOOL;
-	bSetPositioningOptionCode		: BOOL;
-	bGetPositionDemandValue			: BOOL;
-	bBasicOperationAbsStarted		: BOOL;
-	bBasicOperationAbsFinished		: BOOL := FALSE;
-	bPositioningOptionCodeSet		: BOOL;
-	bTargetReached					: BOOL;
-	bTestAbsolutePositioning		: BOOL;
-	nTargetPosition					: DINT;
-	nCurrentPosition				: DINT;
-	nTargetPositionBuf				: DINT;
-	nPositionDemandValue			: DINT;
+	bSetVelocity					: BOOL; 
+	bGetStatusword					: BOOL; 
+	nTargetVelocity					: DINT;
+	nCurrentVelocity				: DINT;
 	nStatusword						: UINT;
-	nPositionWindow					: UDINT;
 	
-	
-	bTest							: BOOL;
-	bAusprobieren					: BOOL;
 END_VAR
 
 VAR
@@ -41,38 +19,32 @@ VAR
 	bPositioningOptionCode			: BOOL;
 END_VAR
 
-//For Test Set of Setpoints
-VAR
-	bSetOfSetpointFinished 			: BOOL;
-	nCurrentPositionBuf				: DINT;
-	bSetPointSet					: BOOL;  //For both
-	bSetOfSetpoints					: BOOL;
-	bStartBasicOperationAbs			: BOOL;
-	bTestSetOfSetpoints				: BOOL;
-	bSetOfSetpointsFinished			: BOOL;
-END_VAR
-
-//Fo Test Change Immediately
-VAR
-	bTestChangeImmediately			: BOOL;
-	bChangeImmediatelyFinished		: BOOL;
-	bChangeImmediately				: BOOL;
-END_VAR
-
-//For test of relative Positioninig
-VAR
-	tSetPositioningOptionCode		: TON;
-	fbSetPositioningOptionCode		: FB_EcCoeSdoWrite;
-	bTestRelativePositioning		: BOOL;
-	bRelativePositioningFinished	: BOOL;
-	nPositioningOptionCode			: DINT;
-	nCounter						: DINT;
-END_VAR]]></Declaration>
+]]></Declaration>
     <Implementation>
-      <ST><![CDATA[]]></ST>
+      <ST><![CDATA[fbVelocityMode(sNetID := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nTargetVelocity := nTargetVelocity,
+				bSetVelocity := bSetVelocity);
+
+fbGetStatusword(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6041,
+				nSubindex := 0,
+				pDstBuf := ADR(nStatusWord),
+				cbBufLen := SIZEOF(nStatusWord),
+				bExecute := bGetStatusword);
+
+
+
+
+]]></ST>
     </Implementation>
     <LineIds Name="P_VelocityModeTest">
+      <LineId Id="820" Count="2" />
       <LineId Id="658" Count="0" />
+      <LineId Id="823" Count="0" />
+      <LineId Id="830" Count="5" />
+      <LineId Id="824" Count="5" />
     </LineIds>
   </POU>
 </TcPlcObject>
