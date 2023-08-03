@@ -5,26 +5,29 @@
 VAR
 	fbVelocityMode					: VelocityMode;
 	fbGetStatusword					: FB_EcCoeSdoRead;
-	bSetVelocity					: BOOL; 
+	fbGetActualVelocity				: FB_EcCoeSdoRead;
 	bGetStatusword					: BOOL; 
 	nTargetVelocity					: DINT;
-	nCurrentVelocity				: DINT;
+	nActualVelocity					: DINT;
 	nStatusword						: UINT;
 	
+	bGetActualVelocity				: BOOL;
+	fActualVelocityRead				: F_TRIG;
+	fStatusWordRead					: F_TRIG;
 END_VAR
 
 VAR
-	bBasicOperationAbs				: BOOL;
-	bBasicOperationRel				: BOOL;
-	bPositioningOptionCode			: BOOL;
+	bSetVelocity					: BOOL; 
+	bStopMotor						: BOOL;
 END_VAR
 
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[fbVelocityMode(sNetID := GVL.sNetId,
-				nSlaveAddr := GVL.nSlaveAddr,
-				nTargetVelocity := nTargetVelocity,
-				bSetVelocity := bSetVelocity);
+      <ST><![CDATA[nTargetVelocity := 200; //rpm
+// read FBs
+bGetActualVelocity := TRUE;
+bGetStatusword := TRUE;
+
 
 fbGetStatusword(sNetId := GVL.sNetId,
 				nSlaveAddr := GVL.nSlaveAddr,
@@ -33,18 +36,69 @@ fbGetStatusword(sNetId := GVL.sNetId,
 				pDstBuf := ADR(nStatusWord),
 				cbBufLen := SIZEOF(nStatusWord),
 				bExecute := bGetStatusword);
+				
+fbGetActualVelocity(sNetId := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nIndex := 16#6044,
+					nSubindex := 0,
+					pDstBuf := ADR(nActualVelocity),
+					cbBufLen := SIZEOF(nActualVelocity),
+					bExecute := bGetActualVelocity);
+
+//set velocity
+MAIN.Controlword.4 := 1; //velocity demand value shall equal to ramp output value
+MAIN.Controlword.5 := 1; //ramp output value shall follow ramp input value
+MAIN.Controlword.6 := 1; //ramp input value shall accord with ramp reference
+
+fbVelocityMode(sNetID := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nTargetVelocity := nTargetVelocity,
+				bSetVelocity := bSetVelocity);
+				
+//stop
+IF bStopMotor THEN
+	MAIN.Controlword.8 := 1; //Motor shall be stopped
+END_IF
+// TODO implement request object 605D<2 velocity deceleration and 605D>=2 quick stop
 
 
+
+//reset FBs
+fActualVelocityRead.CLK := fbGetActualVelocity.bBusy;
+IF fActualVelocityRead.Q THEN
+	bGetActualVelocity := FALSE;
+END_IF
+fStatusWordRead.CLK := fbGetStatusword.bBusy;
+IF fStatusWordRead.Q THEN
+	bGetStatusword := FALSE;
+END_IF
 
 
 ]]></ST>
     </Implementation>
     <LineIds Name="P_VelocityModeTest">
-      <LineId Id="820" Count="2" />
-      <LineId Id="658" Count="0" />
-      <LineId Id="823" Count="0" />
-      <LineId Id="830" Count="5" />
-      <LineId Id="824" Count="5" />
+      <LineId Id="854" Count="0" />
+      <LineId Id="895" Count="0" />
+      <LineId Id="892" Count="1" />
+      <LineId Id="897" Count="0" />
+      <LineId Id="861" Count="7" />
+      <LineId Id="875" Count="0" />
+      <LineId Id="869" Count="5" />
+      <LineId Id="824" Count="0" />
+      <LineId Id="904" Count="0" />
+      <LineId Id="898" Count="0" />
+      <LineId Id="909" Count="3" />
+      <LineId Id="899" Count="2" />
+      <LineId Id="896" Count="0" />
+      <LineId Id="902" Count="0" />
+      <LineId Id="913" Count="0" />
+      <LineId Id="916" Count="2" />
+      <LineId Id="903" Count="0" />
+      <LineId Id="914" Count="1" />
+      <LineId Id="905" Count="0" />
+      <LineId Id="884" Count="7" />
+      <LineId Id="881" Count="0" />
+      <LineId Id="827" Count="2" />
     </LineIds>
   </POU>
 </TcPlcObject>

@@ -114,6 +114,9 @@ END_VAR]]></Declaration>
 			//Error when setting Target Velocity
 			bSuccess := FALSE;
 			bWriteToFB := FALSE;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Error in set velocity',
+				strArg := '');
 			eMotionState := WAIT_FOR_TRIGGER;
 		END_IF
 		IF fFlag.Q THEN
@@ -154,7 +157,9 @@ END_CASE
 ]]></ST>
     </Implementation>
     <LineIds Name="VelocityMode">
-      <LineId Id="1081" Count="116" />
+      <LineId Id="1081" Count="78" />
+      <LineId Id="1229" Count="2" />
+      <LineId Id="1160" Count="37" />
       <LineId Id="19" Count="0" />
     </LineIds>
   </POU>
