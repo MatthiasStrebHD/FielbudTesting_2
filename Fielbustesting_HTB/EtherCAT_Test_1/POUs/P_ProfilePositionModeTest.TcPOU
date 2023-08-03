@@ -8,9 +8,9 @@ VAR
 	fbGetStatusword					: FB_EcCoeSdoRead;
 	fbGetPositionWindow				: FB_EcCoeSdoRead;
 	fbGetPositionDemandValue		: FB_EcCoeSdoRead;
-	tWaitForCurrentPosition			: TON;
-	tWaitForPositionDemandValue		: TON;
-	tGetStatusword					: TON;
+	tGetCurrentPosition				: TON;
+	ftGetStatusword					: F_Trig;
+	ftGetPositionDemandValue		: F_Trig;
 	bGetCurrentPosition				: BOOL;
 	bMove							: BOOL; 
 	bExecuteTimer					: BOOL;
@@ -61,7 +61,7 @@ END_VAR
 
 //For test of relative Positioninig
 VAR
-	tSetPositioningOptionCode		: TON;
+	ftSetPositioningOptionCode		: F_TRIG;
 	fbSetPositioningOptionCode		: FB_EcCoeSdoWrite;
 	bTestRelativePositioning		: BOOL;
 	bRelativePositioningFinished	: BOOL;
@@ -69,15 +69,14 @@ VAR
 	nCounter						: DINT;
 END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[tWaitForCurrentPosition(IN := bGetCurrentPosition,
+      <ST><![CDATA[tGetCurrentPosition(IN := bGetCurrentPosition,
 							PT := T#10MS);
-tGetStatusword(IN := bGetStatusword,
-					PT := T#500MS);	
-tSetPositioningOptionCode(IN := bSetPositioningOptionCode,
-							PT := T#125MS);		
-tWaitForPositionDemandValue(IN := bGetPositionDemandValue,
-							PT := T#125MS);
-IF tWaitForCurrentPosition.Q THEN
+
+ftGetStatusword(CLK := fbGetStatusword.bBusy);
+ftGetPositionDemandValue(CLK := fbGetPositionDemandValue.bBusy);
+ftSetPositioningOptionCode(CLK := fbSetPositioningOptionCode.bBusy);		
+							
+IF tGetCurrentPosition.Q THEN
 	bGetCurrentPosition := FALSE;
 ELSE
 	bGetCurrentPosition := TRUE;		
@@ -143,7 +142,7 @@ IF bStartBasicOperationAbs THEN
 					
 	//Target reached?
 	bGetStatusword := TRUE;
-	IF tGetStatusword.Q THEN
+	IF ftGetStatusword.Q THEN
 		IF NOT nStatusword.10 THEN
 			bGetStatusword := FALSE;
 		ELSIF ((nCurrentPosition >= nTargetPosition - nPositionWindow)
@@ -205,7 +204,7 @@ IF bTestRelativePositioning THEN
 	//target position
 	IF nCounter = 0 THEN
 		nPositioningOptionCode := 0;
-		IF tSetPositioningOptionCode.Q THEN
+		IF ftSetPositioningOptionCode.Q THEN
 			nTargetPosition := 5000000;
 		END_IF
 		
@@ -242,10 +241,11 @@ END_IF]]></ST>
     <LineIds Name="P_ProfilePositionModeTest">
       <LineId Id="93" Count="0" />
       <LineId Id="92" Count="0" />
-      <LineId Id="91" Count="0" />
+      <LineId Id="753" Count="0" />
       <LineId Id="94" Count="0" />
-      <LineId Id="229" Count="1" />
-      <LineId Id="347" Count="1" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="762" Count="0" />
+      <LineId Id="754" Count="0" />
       <LineId Id="211" Count="0" />
       <LineId Id="210" Count="0" />
       <LineId Id="213" Count="1" />

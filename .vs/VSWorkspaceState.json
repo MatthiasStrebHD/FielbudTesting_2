@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\Fielbustesting_HTB",
+    "\\Fielbustesting_HTB\\EtherCAT_Test_1",
+    "\\Fielbustesting_HTB\\EtherCAT_Test_1\\POUs",
+    "\\Fielbustesting_HTB\\EtherCAT_Test_1\\POUs\\ProfilePositionMode"
+  ],
+  "SelectedNode": "\\Fielbustesting_HTB\\EtherCAT_Test_1\\POUs\\MAIN.TcPOU",
+  "PreviewInSolutionExplorer": false
+}
