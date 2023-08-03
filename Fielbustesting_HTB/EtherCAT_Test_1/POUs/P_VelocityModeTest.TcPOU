@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="P_VelocityModeTest" Id="{20dbc57a-bcdc-4d5e-be58-5c2d209d0155}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_VelocityModeTest
+VAR
+	fbMoveInProfilePosition			: Motion;
+	fbGetCurrentPosition			: FB_EcCoeSdoRead;
+	fbGetStatusword					: FB_EcCoeSdoRead;
+	fbGetPositionWindow				: FB_EcCoeSdoRead;
+	fbGetPositionDemandValue		: FB_EcCoeSdoRead;
+	tWaitForCurrentPosition			: TON;
+	tWaitForPositionDemandValue		: TON;
+	tGetStatusword					: TON;
+	bGetCurrentPosition				: BOOL;
+	bMove							: BOOL; 
+	bExecuteTimer					: BOOL;
+	bGetStatusword					: BOOL;
+	bGetParameters					: BOOL;
+	bSetPositioningOptionCode		: BOOL;
+	bGetPositionDemandValue			: BOOL;
+	bBasicOperationAbsStarted		: BOOL;
+	bBasicOperationAbsFinished		: BOOL := FALSE;
+	bPositioningOptionCodeSet		: BOOL;
+	bTargetReached					: BOOL;
+	bTestAbsolutePositioning		: BOOL;
+	nTargetPosition					: DINT;
+	nCurrentPosition				: DINT;
+	nTargetPositionBuf				: DINT;
+	nPositionDemandValue			: DINT;
+	nStatusword						: UINT;
+	nPositionWindow					: UDINT;
+	
+	
+	bTest							: BOOL;
+	bAusprobieren					: BOOL;
+END_VAR
+
+VAR
+	bBasicOperationAbs				: BOOL;
+	bBasicOperationRel				: BOOL;
+	bPositioningOptionCode			: BOOL;
+END_VAR
+
+//For Test Set of Setpoints
+VAR
+	bSetOfSetpointFinished 			: BOOL;
+	nCurrentPositionBuf				: DINT;
+	bSetPointSet					: BOOL;  //For both
+	bSetOfSetpoints					: BOOL;
+	bStartBasicOperationAbs			: BOOL;
+	bTestSetOfSetpoints				: BOOL;
+	bSetOfSetpointsFinished			: BOOL;
+END_VAR
+
+//Fo Test Change Immediately
+VAR
+	bTestChangeImmediately			: BOOL;
+	bChangeImmediatelyFinished		: BOOL;
+	bChangeImmediately				: BOOL;
+END_VAR
+
+//For test of relative Positioninig
+VAR
+	tSetPositioningOptionCode		: TON;
+	fbSetPositioningOptionCode		: FB_EcCoeSdoWrite;
+	bTestRelativePositioning		: BOOL;
+	bRelativePositioningFinished	: BOOL;
+	nPositioningOptionCode			: DINT;
+	nCounter						: DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <LineIds Name="P_VelocityModeTest">
+      <LineId Id="658" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -5,6 +5,7 @@
 VAR_INPUT
 	Controlword AT%Q*		: UINT;	
 	TargetPosition AT%Q*	: DINT;
+	TargetVelocity AT%Q*	: DINT;	
 END_VAR
 VAR_OUTPUT
 	Statusword AT%I*		: UINT;

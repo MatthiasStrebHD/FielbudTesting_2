@@ -1,0 +1,173 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="VelocityMode" Id="{f4a4aaf5-5fd1-488f-adcc-e224a9bd5f8a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK VelocityMode
+VAR_INPUT
+	sNetID					: T_AmsNetId;
+	nSlaveAddr				: UINT;
+	nTargetVelocity			: DINT;
+END_VAR
+VAR_OUTPUT
+	bSuccess				: BOOL;
+END_VAR
+VAR_IN_OUT
+	bSetVelo					: BOOL;
+END_VAR
+VAR
+	eMotionState			: (WAIT_FOR_TRIGGER, ENABLE_DEVICE, SET_LIMIT, SET_VELOCITY, VALIDATE_VELOCITY, ACKNOWLEDGE_VELOCITY);
+	fbEnableDevice			: FB_EnableDevice;
+	fbSetVelocity			: FB_EcCoeSdoWrite;
+	fbGetStatusword			: FB_EcCoeSdoRead;
+	fbGetVelocityLimitMin	: FB_EcCoeSdoRead;
+	fbGetVelocityLimitMax	: FB_EcCoeSdoRead;
+	tWait					: TON;
+	tWait2					: TON;
+	nStatusword				: UINT;
+	bGetStatusword			: BOOL;
+	bExecuteWait			: BOOL;
+	bSetVelocity			: BOOL;
+	fFlag		 			: F_TRIG;
+	nVelocityLimitMin		: UINT;
+	nVelocityLimitMax		: UINT;
+	bGetVelocityLimits		: BOOL;
+	fMinFlag				: F_TRIG;
+	fMaxFlag				: F_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE eMotionState OF
+	WAIT_FOR_TRIGGER:
+		MAIN.Controlword := 0;
+		IF bSetVelo THEN
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Enable Device',
+				strArg := '');
+			eMotionState := ENABLE_DEVICE;
+		END_IF	
+
+	ENABLE_DEVICE:
+		fbEnableDevice (bTrigger := bSetVelo,
+						bSuccess => bSuccess,
+						sNetId := sNetId,
+						nSlaveAddr := nSlaveAddr);
+		IF fbEnableDevice.bFinished THEN
+			IF NOT bSuccess THEN
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Device not successfully enabled',
+					strArg := '');
+				eMotionState := WAIT_FOR_TRIGGER;
+			ELSE
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Device successfully enabled',
+					strArg := '');
+				eMotionState := SET_LIMIT; 
+			END_IF
+		END_IF
+		
+	SET_LIMIT:
+		bGetVelocityLimits := TRUE;
+		fbGetVelocityLimitMin(sNetId := sNetID,
+					nSlaveAddr := nSlaveAddr,
+					nSubIndex := 1, //v_min
+					nIndex := 16#6046, 
+					pDstBuf := ADR(nVelocityLimitMin),
+					cbBufLen := SIZEOF(nVelocityLimitMin),
+					bExecute := bGetVelocityLimits);
+		fbGetVelocityLimitMax(sNetId := sNetID,
+					nSlaveAddr := nSlaveAddr,
+					nSubIndex := 2, //v_max
+					nIndex := 16#6046, 
+					pDstBuf := ADR(nVelocityLimitMax),
+					cbBufLen := SIZEOF(nVelocityLimitMax),
+					bExecute := bGetVelocityLimits);
+		// set limits
+		fMinFlag.CLK := fbGetVelocityLimitMin.bBusy;
+		fMaxFlag.CLK := fbGetVelocityLimitMax.bBusy;
+		IF fMinFlag.Q AND fMaxFlag.Q THEN
+			IF nTargetVelocity < nVelocityLimitMin THEN
+				nTargetVelocity := nVelocityLimitMin;
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Velocity exceeds limit: Minimum limit was set',
+					strArg := '');
+			ELSIF nTargetVelocity > nVelocityLimitMax THEN
+				nTargetVelocity := nVelocityLimitMax;
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Velocity exceeds limit: Maximum limit was set',
+					strArg := '');
+			END_IF
+			eMotionState := SET_VELOCITY;
+		END_IF
+	
+	SET_VELOCITY:
+		//set velocity
+		bSetVelocity := TRUE;
+		fbSetVelocity(sNetId := sNetID,
+					nSlaveAddr := nSlaveAddr,
+					nSubIndex := 0,
+					nIndex := 16#6042,
+					pSrcBuf := ADR(nTargetVelocity),
+					cbBufLen := SIZEOF(nTargetVelocity),
+					bExecute := bSetVelocity);
+		MAIN.TargetVelocity := nTargetVelocity;
+		fFlag.CLK := fbSetVelocity.bBusy; //falling edge at acknowledge of FB
+		
+		IF fbSetVelocity.bError THEN
+			//Error when setting Target Velocity
+			bSuccess := FALSE;
+			bSetVelocity := FALSE;
+			eMotionState := WAIT_FOR_TRIGGER;
+		END_IF
+		IF fFlag.Q THEN
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Validate Velocity',
+				strArg := '');
+			eMotionState := VALIDATE_VELOCITY;
+		END_IF
+		
+	VALIDATE_VELOCITY:
+		bGetStatusword := TRUE;
+		fbGetStatusword(sNetId := sNetId,
+			nSlaveAddr := nSlaveAddr,
+			nIndex := 16#6041,
+			nSubIndex := 0,
+			pDstBuf := ADR(nStatusword),
+			cbBufLen := SIZEOF(nStatusword),
+			bExecute := bGetStatusword);
+		fFlag.CLK := fbGetStatusword.bBusy;
+		IF fFlag.Q THEN
+			IF nStatusword.4 THEN
+				bGetStatusword := FALSE;
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Velocity is valid',
+				strArg := '');
+			ELSE 
+				bSetVelocity := FALSE;
+				bSuccess := FALSE;
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Error when validating velocity',
+					strArg := '');
+			END_IF
+			eMotionState := WAIT_FOR_TRIGGER;
+		END_IF
+		
+END_CASE
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="VelocityMode">
+      <LineId Id="779" Count="44" />
+      <LineId Id="894" Count="0" />
+      <LineId Id="884" Count="3" />
+      <LineId Id="896" Count="0" />
+      <LineId Id="898" Count="0" />
+      <LineId Id="897" Count="0" />
+      <LineId Id="889" Count="1" />
+      <LineId Id="899" Count="2" />
+      <LineId Id="893" Count="0" />
+      <LineId Id="892" Count="0" />
+      <LineId Id="895" Count="0" />
+      <LineId Id="888" Count="0" />
+      <LineId Id="826" Count="54" />
+      <LineId Id="19" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
