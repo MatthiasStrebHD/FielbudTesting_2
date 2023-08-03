@@ -47,7 +47,7 @@ IF tSetToPPMode.Q THEN
 	P_ProfilePositionModeTest();	
 END_IF
 
-				]]></ST>
+//Hallo Julian. Kannst du das lesen?]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
       <LineId Id="2" Count="0" />
