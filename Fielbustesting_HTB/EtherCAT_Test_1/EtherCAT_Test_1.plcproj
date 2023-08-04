@@ -50,6 +50,9 @@
     <Compile Include="POUs\ST_PlcErrorStartUp.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="POUs\VelocityMode\BasicTests.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="POUs\VelocityMode\VelocityMode.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -86,6 +89,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="EtherCAT_Test.tmc">
+      <SubType>Content</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="EtherCAT_Test_1.tmc">
       <SubType>Content</SubType>
     </None>
   </ItemGroup>

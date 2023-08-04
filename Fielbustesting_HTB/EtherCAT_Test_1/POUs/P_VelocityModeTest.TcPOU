@@ -7,7 +7,7 @@ VAR
 	fbGetStatusword					: FB_EcCoeSdoRead;
 	fbGetActualVelocity				: FB_EcCoeSdoRead;
 	bGetStatusword					: BOOL; 
-	nTargetVelocity					: DINT;
+	nTargetVelocity					: DINT := 50; //rpm
 	nActualVelocity					: DINT;
 	nStatusword						: UINT;
 	
@@ -19,12 +19,12 @@ END_VAR
 VAR
 	bSetVelocity					: BOOL; 
 	bStopMotor						: BOOL;
+	bSetControlWord					: BOOL := FALSE;
 END_VAR
 
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[nTargetVelocity := 200; //rpm
-// read FBs
+      <ST><![CDATA[// read FBs
 bGetActualVelocity := TRUE;
 bGetStatusword := TRUE;
 
@@ -46,9 +46,9 @@ fbGetActualVelocity(sNetId := GVL.sNetId,
 					bExecute := bGetActualVelocity);
 
 //set velocity
-MAIN.Controlword.4 := 1; //velocity demand value shall equal to ramp output value
-MAIN.Controlword.5 := 1; //ramp output value shall follow ramp input value
-MAIN.Controlword.6 := 1; //ramp input value shall accord with ramp reference
+MAIN.Controlword.4 := bSetControlWord; //velocity demand value shall equal to ramp output value
+MAIN.Controlword.5 := bSetControlWord; //ramp output value shall follow ramp input value
+MAIN.Controlword.6 := bSetControlWord; //ramp input value shall accord with ramp reference
 
 fbVelocityMode(sNetID := GVL.sNetId,
 				nSlaveAddr := GVL.nSlaveAddr,
@@ -57,18 +57,21 @@ fbVelocityMode(sNetID := GVL.sNetId,
 				
 //stop
 IF bStopMotor THEN
-	MAIN.Controlword.8 := 1; //Motor shall be stopped
+	//MAIN.Controlword.8 := 1; //Motor shall be stopped
+	MAIN.Controlword := 0;
 END_IF
 // TODO implement request object 605D<2 velocity deceleration and 605D>=2 quick stop
 
 
 
+
+
 //reset FBs
-fActualVelocityRead.CLK := fbGetActualVelocity.bBusy;
+fActualVelocityRead(CLK := fbGetActualVelocity.bBusy);
 IF fActualVelocityRead.Q THEN
 	bGetActualVelocity := FALSE;
 END_IF
-fStatusWordRead.CLK := fbGetStatusword.bBusy;
+fStatusWordRead(CLK := fbGetStatusword.bBusy);
 IF fStatusWordRead.Q THEN
 	bGetStatusword := FALSE;
 END_IF
@@ -77,7 +80,6 @@ END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="P_VelocityModeTest">
-      <LineId Id="854" Count="0" />
       <LineId Id="895" Count="0" />
       <LineId Id="892" Count="1" />
       <LineId Id="897" Count="0" />
@@ -92,9 +94,14 @@ END_IF
       <LineId Id="896" Count="0" />
       <LineId Id="902" Count="0" />
       <LineId Id="913" Count="0" />
-      <LineId Id="916" Count="2" />
+      <LineId Id="916" Count="1" />
+      <LineId Id="945" Count="0" />
+      <LineId Id="918" Count="0" />
       <LineId Id="903" Count="0" />
-      <LineId Id="914" Count="1" />
+      <LineId Id="914" Count="0" />
+      <LineId Id="939" Count="0" />
+      <LineId Id="942" Count="0" />
+      <LineId Id="915" Count="0" />
       <LineId Id="905" Count="0" />
       <LineId Id="884" Count="7" />
       <LineId Id="881" Count="0" />

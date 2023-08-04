@@ -27,14 +27,18 @@ VAR
 	bExecuteWait			: BOOL;
 	bWriteToFB				: BOOL;
 	fFlag		 			: F_TRIG;
-	nVelocityLimitMin		: UINT;
-	nVelocityLimitMax		: UINT;
-	bGetVelocityLimits		: BOOL;
+	nVelocityLimitMin		: DINT;
+	nVelocityLimitMax		: DINT;
+	bGetVelocityLimitMin	: BOOL;
+	bGetVelocityLimitMax	: BOOL;
 	fMinFlag				: F_TRIG;
 	fMaxFlag				: F_TRIG;
+	bNextStep				: BOOL;
 END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[CASE eMotionState OF
+      <ST><![CDATA[
+
+CASE eMotionState OF
 	WAIT_FOR_TRIGGER:
 		MAIN.Controlword := 0;
 		IF bSetVelocity THEN
@@ -64,25 +68,30 @@ END_VAR]]></Declaration>
 		END_IF
 		
 	SET_LIMIT:
-		bGetVelocityLimits := TRUE;
-		fbGetVelocityLimitMin(sNetId := sNetID,
-					nSlaveAddr := nSlaveAddr,
-					nSubIndex := 1, //v_min
-					nIndex := 16#6046, 
-					pDstBuf := ADR(nVelocityLimitMin),
-					cbBufLen := SIZEOF(nVelocityLimitMin),
-					bExecute := bGetVelocityLimits);
+		bGetVelocityLimitMax := TRUE;
+		fMinFlag(CLK := fbGetVelocityLimitMin.bBusy);
+		fMaxFlag(CLK := fbGetVelocityLimitMax.bBusy);
+		
 		fbGetVelocityLimitMax(sNetId := sNetID,
 					nSlaveAddr := nSlaveAddr,
 					nSubIndex := 2, //v_max
 					nIndex := 16#6046, 
 					pDstBuf := ADR(nVelocityLimitMax),
 					cbBufLen := SIZEOF(nVelocityLimitMax),
-					bExecute := bGetVelocityLimits);
+					bExecute := bGetVelocityLimitMax);
 		// set limits
-		fMinFlag.CLK := fbGetVelocityLimitMin.bBusy;
-		fMaxFlag.CLK := fbGetVelocityLimitMax.bBusy;
-		IF fMinFlag.Q AND fMaxFlag.Q THEN
+		IF fMaxFlag.Q THEN
+			bGetVelocityLimitMin := TRUE;
+		END_IF		
+		fbGetVelocityLimitMin(sNetId := sNetID,
+					nSlaveAddr := nSlaveAddr,
+					nSubIndex := 1, //v_min
+					nIndex := 16#6046, 
+					pDstBuf := ADR(nVelocityLimitMin),
+					cbBufLen := SIZEOF(nVelocityLimitMin),
+					bExecute := bGetVelocityLimitMin);
+		
+		IF fMinFlag.Q THEN
 			IF nTargetVelocity < nVelocityLimitMin THEN
 				nTargetVelocity := nVelocityLimitMin;
 				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
@@ -94,6 +103,7 @@ END_VAR]]></Declaration>
 					msgFmtStr := 'Velocity exceeds limit: Maximum limit was set',
 					strArg := '');
 			END_IF
+			bGetVelocityLimitMin := FALSE;
 			eMotionState := SET_VELOCITY;
 		END_IF
 	
@@ -107,8 +117,8 @@ END_VAR]]></Declaration>
 					pSrcBuf := ADR(nTargetVelocity),
 					cbBufLen := SIZEOF(nTargetVelocity),
 					bExecute := bWriteToFB);
-		MAIN.TargetVelocity := nTargetVelocity;
-		fFlag.CLK := fbSetVelocity.bBusy; //falling edge at acknowledge of FB
+
+		fFlag(CLK := fbSetVelocity.bBusy); //falling edge at acknowledge of FB
 		
 		IF fbSetVelocity.bError THEN
 			//Error when setting Target Velocity
@@ -123,6 +133,7 @@ END_VAR]]></Declaration>
 			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 				msgFmtStr := 'Validate Velocity',
 				strArg := '');
+			bWriteToFB := FALSE;
 			eMotionState := VALIDATE_VELOCITY;
 		END_IF
 		
@@ -135,7 +146,7 @@ END_VAR]]></Declaration>
 			pDstBuf := ADR(nStatusword),
 			cbBufLen := SIZEOF(nStatusword),
 			bExecute := bGetStatusword);
-		fFlag.CLK := fbGetStatusword.bBusy;
+		fFlag(CLK := fbGetStatusword.bBusy);
 		IF fFlag.Q THEN
 			IF nStatusword.4 THEN
 				bGetStatusword := FALSE;
@@ -149,6 +160,7 @@ END_VAR]]></Declaration>
 					msgFmtStr := 'Error when validating velocity',
 					strArg := '');
 			END_IF
+			bGetStatusword := FALSE;
 			eMotionState := WAIT_FOR_TRIGGER;
 		END_IF
 		
@@ -156,11 +168,77 @@ END_CASE
 
 ]]></ST>
     </Implementation>
+    <Method Name="GetVMaxLimit" Id="{1b54dcad-bb7a-47f5-b5b5-5e96cd90dd6c}">
+      <Declaration><![CDATA[METHOD GetVMaxLimit : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbGetVelocityLimitMax(sNetId := sNetID,
+					nSlaveAddr := nSlaveAddr,
+					nSubIndex := 2, //v_max
+					nIndex := 16#6046, 
+					pDstBuf := ADR(nVelocityLimitMax),
+					cbBufLen := SIZEOF(nVelocityLimitMax),
+					bExecute := TRUE);
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetVMinLimit" Id="{697c1f52-4f80-4637-ac85-fa25509ff6a5}">
+      <Declaration><![CDATA[METHOD GetVMinLimit : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbGetVelocityLimitMin(sNetId := sNetID,
+					nSlaveAddr := nSlaveAddr,
+					nSubIndex := 1, //v_min
+					nIndex := 16#6046, 
+					pDstBuf := ADR(nVelocityLimitMin),
+					cbBufLen := SIZEOF(nVelocityLimitMin),
+					bExecute := TRUE);]]></ST>
+      </Implementation>
+    </Method>
     <LineIds Name="VelocityMode">
-      <LineId Id="1081" Count="78" />
+      <LineId Id="1313" Count="0" />
+      <LineId Id="1312" Count="0" />
+      <LineId Id="1081" Count="29" />
+      <LineId Id="1279" Count="1" />
+      <LineId Id="1111" Count="0" />
+      <LineId Id="1290" Count="0" />
+      <LineId Id="1304" Count="5" />
+      <LineId Id="1125" Count="0" />
+      <LineId Id="1128" Count="1" />
+      <LineId Id="1282" Count="1" />
+      <LineId Id="1298" Count="5" />
+      <LineId Id="1268" Count="0" />
+      <LineId Id="1287" Count="0" />
+      <LineId Id="1276" Count="0" />
+      <LineId Id="1130" Count="10" />
+      <LineId Id="1267" Count="0" />
+      <LineId Id="1141" Count="0" />
+      <LineId Id="1277" Count="0" />
+      <LineId Id="1143" Count="10" />
+      <LineId Id="1263" Count="0" />
+      <LineId Id="1155" Count="4" />
       <LineId Id="1229" Count="2" />
-      <LineId Id="1160" Count="37" />
+      <LineId Id="1160" Count="6" />
+      <LineId Id="1265" Count="0" />
+      <LineId Id="1167" Count="25" />
+      <LineId Id="1266" Count="0" />
+      <LineId Id="1193" Count="4" />
       <LineId Id="19" Count="0" />
+    </LineIds>
+    <LineIds Name="VelocityMode.GetVMaxLimit">
+      <LineId Id="6" Count="5" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="12" Count="0" />
+    </LineIds>
+    <LineIds Name="VelocityMode.GetVMinLimit">
+      <LineId Id="6" Count="5" />
+      <LineId Id="5" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>
