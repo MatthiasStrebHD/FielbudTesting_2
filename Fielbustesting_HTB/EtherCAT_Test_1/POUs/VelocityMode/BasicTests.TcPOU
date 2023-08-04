@@ -7,6 +7,7 @@ VAR
 	fbRead					: FB_EcCoeSdoRead;
 	fbReadVMax				: FB_EcCoeSdoRead;
 	fbReadVMin				: FB_EcCoeSdoRead;
+	fbReadVAct				: FB_EcCoeSdoRead;
 	nModeOfOperation		: UDINT := 2;
 	bSetToVelocityMode		: BOOL;
 	nMode					: DINT;
@@ -18,6 +19,7 @@ VAR
 	nVMin: DINT;
 	bReadVMin: BOOL;
 	fvmaxtrig: F_TRIG;
+	nActualVelocity			: DINT;
 END_VAR
 ]]></Declaration>
     <Implementation>

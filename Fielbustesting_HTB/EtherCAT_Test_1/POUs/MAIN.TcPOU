@@ -24,7 +24,7 @@ VAR
 	fbSetToPPMode			: FB_EcCoeSdoWrite;
 	fbSetToVelocityMode		: FB_EcCoeSdoWrite;
 	bSetToPPMode			: BOOL;
-	bSetToVelocityMode		: BOOL;
+	bSetToVelocityMode		: BOOL := TRUE;
 	tSetToPPMode			: TON;
 	fSetToVelocityMode		: F_TRIG;
 	nModeOfOperation		: UDINT := 2;
@@ -53,7 +53,7 @@ IF tSetToPPMode.Q THEN
 END_IF
 *)
 
-//BasicTests();
+BasicTests();
 
 fbSetToVelocityMode(sNetId := GVL.sNetId, 
 				nSlaveAddr := GVL.nSlaveAddr,
