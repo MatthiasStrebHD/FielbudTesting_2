@@ -3,71 +3,109 @@
   <POU Name="P_ProfilePositionModeTest" Id="{899bc5f3-4f5f-4eaa-beb6-c92d972467a4}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM P_ProfilePositionModeTest
 VAR
-	fbMoveInProfilePosition			: Motion;
-	fbGetCurrentPosition			: FB_EcCoeSdoRead;
-	fbGetStatusword					: FB_EcCoeSdoRead;
-	fbGetPositionWindow				: FB_EcCoeSdoRead;
-	fbGetPositionDemandValue		: FB_EcCoeSdoRead;
-	tGetCurrentPosition				: TON;
-	ftGetStatusword					: F_Trig;
-	ftGetPositionDemandValue		: F_Trig;
-	bGetCurrentPosition				: BOOL;
-	bMove							: BOOL; 
-	bExecuteTimer					: BOOL;
-	bGetStatusword					: BOOL;
-	bGetParameters					: BOOL;
-	bSetPositioningOptionCode		: BOOL;
-	bGetPositionDemandValue			: BOOL;
-	bBasicOperationAbsStarted		: BOOL;
-	bBasicOperationAbsFinished		: BOOL := FALSE;
-	bPositioningOptionCodeSet		: BOOL;
-	bTargetReached					: BOOL;
-	bTestAbsolutePositioning		: BOOL;
-	nTargetPosition					: DINT;
-	nCurrentPosition				: DINT;
-	nTargetPositionBuf				: DINT;  
-	nPositionDemandValue			: DINT;
-	nStatusword						: UINT;
-	nPositionWindow					: UDINT;
+	fbMoveInProfilePosition				: Motion;
+	fbGetCurrentPosition				: FB_EcCoeSdoRead;
+	fbGetStatusword						: FB_EcCoeSdoRead;
+	fbGetPositionWindow					: FB_EcCoeSdoRead;
+	fbGetPositionDemandValue			: FB_EcCoeSdoRead;
+	fbGetMinPositionRangeLimit			: FB_EcCoeSdoRead;
+	fbGetMaxPositionRangeLimit			: FB_EcCoeSdoRead;
+	tGetCurrentPosition					: TON;
+	ftGetStatusword						: F_TRIG;
+	ftGetPositionDemandValue			: F_TRIG;
+	ftGetPositionRangeLimit				: F_TRIG;
+	bGetCurrentPosition					: BOOL;
+	bMove								: BOOL; 
+	bExecuteTimer						: BOOL;
+	bGetStatusword						: BOOL;
+	bGetParameters						: BOOL;
+	bSetPositioningOptionCode			: BOOL;
+	bGetPositionDemandValue				: BOOL;
+	bBasicOperationAbsStarted			: BOOL;
+	bBasicOperationAbsFinished			: BOOL := FALSE;
+	bPositioningOptionCodeSet			: BOOL;
+	bTargetReached						: BOOL;
+	bTestAbsolutePositioning			: BOOL;
+	nTargetPosition						: DINT;
+	nCurrentPosition					: DINT;
+	nTargetPositionBuf					: DINT;  
+	nPositionDemandValue				: DINT;
+	nStatusword							: UINT;
+	nPositionWindow						: UDINT;
 	
 	
-	bTest							: BOOL;
-	bAusprobieren					: BOOL;
+	bTest								: BOOL;
+	bAusprobieren						: BOOL;
 END_VAR
 
 VAR
-	bBasicOperationAbs				: BOOL;
-	bBasicOperationRel				: BOOL;
-	bPositioningOptionCode			: BOOL;
+	bBasicOperationAbs					: BOOL;
+	bBasicOperationRel					: BOOL;
+	bPositioningOptionCode				: BOOL;
 END_VAR
 
 //For Test Set of Setpoints
 VAR
-	bSetOfSetpointFinished 			: BOOL;
-	nCurrentPositionBuf				: DINT;
-	bSetpointSet					: BOOL;  //For both -> Test Change Immediately
-	bSetOfSetpoints					: BOOL;
-	bStartBasicOperationAbs			: BOOL;
-	bTestSetOfSetpoints				: BOOL;
-	bSetOfSetpointsFinished			: BOOL;
+	bSetOfSetpointFinished 				: BOOL;
+	nCurrentPositionBuf					: DINT;
+	bSetpointSet						: BOOL;  //For both -> Test Change Immediately
+	bSetOfSetpoints						: BOOL;
+	bStartBasicOperationAbs				: BOOL;
+	bTestSetOfSetpoints					: BOOL;
+	bSetOfSetpointsFinished				: BOOL;
 END_VAR
 
 //Fo Test Change Immediately
 VAR
-	bTestChangeImmediately			: BOOL;
-	bChangeImmediatelyFinished		: BOOL;
-	bChangeImmediately				: BOOL;
+	bTestChangeImmediately				: BOOL;
+	bChangeImmediatelyFinished			: BOOL;
+	bChangeImmediately					: BOOL;
 END_VAR
 
 //For test of relative Positioninig
 VAR
-	ftSetPositioningOptionCode		: F_TRIG;
-	fbSetPositioningOptionCode		: FB_EcCoeSdoWrite;
-	bTestRelativePositioning		: BOOL;
-	bRelativePositioning			: BOOL := TRUE;
-	bRelativePositioningFinished	: BOOL;
-	nPositioningOptionCode			: DINT;
-	nCounter						: DINT;
+	ftSetPositioningOptionCode			: F_TRIG;
+	fbSetPositioningOptionCode			: FB_EcCoeSdoWrite;
+	bTestRelativePositioning			: BOOL;
+	bRelativePositioning				: BOOL := TRUE;
+	bTestRelativePositioningFinished		: BOOL;
+	bRelativePositioningFinished		: BOOL;
+	nPositioningOptionCode				: DINT;
+	nCounter							: DINT;
+END_VAR
+
+VAR
+	bTestSupportedPPObjects				: BOOL;
+	eTestSupportedPPObjects				: (POSITION_RANGE_LIMIT, SOFTWARE_POSITION_LIMIT, MAX_PROFILE_VELOCITY,
+											MAX_MOTOR_SPEED, PROFILE_VELOCITY, END_VELOCITY, PROFILE_ACCELERATION,
+											PROFILE_DECELERATION, MOTION_PROFILE_TYPE, MAX_ACCELERATION, MAX_DECELERATION);
+	ePositionRangeLimitState			: (GET_CURRENT_POSITION_RANGE_LIMIT, SET_POSITION_RANGE_LIMIT, 
+											TEST_POSITION_LIMIT, RESET_POSITION_RANGE_LIMIT); 
+	eSoftwarePositionLimitState			: (GET_CURRENT_SOFTWARE_LIMITS, SET_SOFTWARE_LIMITS, 
+											TEST_SOFTWARE_LIMITS, RESET_SOFTWARE_LIMITS);
+	nMinPositionRangeLimit				: DINT;
+	nMaxPositionRangeLimit				: DINT;
+	nMinPositionRangeLimitTest			: DINT;
+	nMaxPositionRangeLimitTest			: DINT;
+	bGetPositionRangeLimit				: BOOL;
+	bSetPositionRangeLimit				: BOOL;
+	bPositionRangeLimit					: BOOL;
+	bSoftwarePositionLimit				: BOOL;
+	bMaxProfileVelocity					: BOOL;
+	bMaxMotorSpeed						: BOOL;
+	bProfileVelocity					: BOOL;
+	bEndVelocity						: BOOL;
+	bProfileAcceleration				: BOOL;
+	bProfileDeceleration				: BOOL;
+	bMotionProfileType					: BOOL;
+	bMaxAcceleration					: BOOL;
+	bMaxDeceleration					: BOOL;
+	fbSetMinPositionRangeLimit			: FB_EcCoeSdoWrite;
+	fbSetMaxPositionRangeLimit			: FB_EcCoeSdoWrite;
+	fbGetMinSoftwarePositionRangeLimit	: FB_EcCoeSdoRead;
+	fbGetMaxSoftwarePositionRangeLimit	: FB_EcCoeSdoRead;
+	ftGetSoftwarePositionRangeLimit		: F_TRIG;
+	ftSetPositionRangeLimit				: F_TRIG;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[tGetCurrentPosition(IN := bGetCurrentPosition,
@@ -75,7 +113,10 @@ END_VAR]]></Declaration>
 
 ftGetStatusword(CLK := fbGetStatusword.bBusy);
 ftGetPositionDemandValue(CLK := fbGetPositionDemandValue.bBusy);
-ftSetPositioningOptionCode(CLK := fbSetPositioningOptionCode.bBusy);		
+ftGetPositionRangeLimit(CLK := fbGetMaxPositionRangeLimit.bBusy);
+ftSetPositioningOptionCode(CLK := fbSetPositioningOptionCode.bBusy);
+
+//TODO Position Range Limit		
 							
 IF tGetCurrentPosition.Q THEN
 	bGetCurrentPosition := FALSE;
@@ -114,6 +155,21 @@ fbGetPositionDemandValue(sNetId := GVL.sNetId,
 							pDstBuf := ADR(nPositionDemandValue),
 							cbBufLen := SIZEOF(nPositionDemandValue),
 							bExecute := bGetPositionDemandValue);
+fbGetMinPositionRangeLimit(sNetId := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nSubIndex := 16#01,
+							nIndex := 16#607B,
+							pDstBuf := ADR(nMinPositionRangeLimit),
+							cbBufLen := SIZEOF(nMinPositionRangeLimit),
+							bExecute := bGetPositionRangeLimit);
+fbGetMaxPositionRangeLimit(sNetId := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nSubIndex := 16#02,
+							nIndex := 16#607B,
+							pDstBuf := ADR(nMaxPositionRangeLimit),
+							cbBufLen := SIZEOF(nMaxPositionRangeLimit),
+							bExecute := bPositionRangeLimit);
+							
 fbSetPositioningOptionCode(sNetId := GVL.sNetId,
 							nSlaveAddr := GVL.nSlaveAddr,
 							nIndex := 16#60F2,
@@ -121,6 +177,22 @@ fbSetPositioningOptionCode(sNetId := GVL.sNetId,
 							pSrcBuf := ADR(nPositioningOptionCode),
 							cbBufLen := SIZEOF(nPositioningOptionCode),
 							bExecute := bSetPositioningOptionCode);
+fbSetMinPositionRangeLimit(sNetID := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nIndex := 16#607B,
+							nSubindex := 16#01,
+							pSrcBuf := ADR(nMinPositionRangeLimitTest),
+							cbBufLen := SIZEOF(nMinPositionRangeLimitTest),
+							bExecute := bSetPositionRangeLimit);
+fbSetMaxPositionRangeLimit(sNetID := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nIndex := 16#607B,
+							nSubindex := 16#02,
+							pSrcBuf := ADR(nMaxPositionRangeLimitTest),
+							cbBufLen := SIZEOF(nMaxPositionRangeLimitTest),
+							bExecute := bSetPositionRangeLimit);
+							
+//TODO Position Range Limit
 bGetParameters := TRUE;
 
 IF bStartBasicOperationAbs THEN					
@@ -255,24 +327,76 @@ IF bTestRelativePositioning  AND bRelativePositioning THEN
 			bSetpointSet := FALSE;
 			IF nCounter = 3 THEN
 				bTestRelativePositioning := FALSE;
+				bTestRelativePositioningFinished := TRUE;
 			END_IF
 		ELSIF fbMoveInProfilePosition.bStartPositioning THEN
 			bSetpointSet := FALSE;
 			IF nCounter = 3 THEN
 				bTestRelativePositioning := FALSE;
 				//Actually redundant, but left in for consistensy reasons
+				bTestRelativePositioningFinished := TRUE;
 			END_IF
 		END_IF
 		bGetStatusword := FALSE;
 	END_IF
 END_IF
 
-//Test of supported profile position mode objects
-//607A - Target Position mode - already tested
+IF bTestSupportedPPObjects AND bTestRelativePositioningFinished THEN
+	//607A - Target Position mode - already tested
+	CASE eTestSupportedPPObjects OF
+		//607B Position range limit
+		//Object indicates maximum and minimum position range limit. It shall limit the range of the input value
+		//On reaching or exeeding these limits, the input value shall wrap automatically to the other end of range
+		POSITION_RANGE_LIMIT:
+			CASE ePositionRangeLimitState OF
+				GET_CURRENT_POSITION_RANGE_LIMIT:
+					bGetPositionRangeLimit := TRUE;
+					IF ftGetPositionRangeLimit.Q THEN
+						ePositionRangeLimitState := SET_POSITION_RANGE_LIMIT;
+					END_IF
+					
+				SET_POSITION_RANGE_LIMIT:
+					nMinPositionRangeLimitTest := 1000000;
+					nMaxPositionRangeLimitTest := nCurrentPosition + 5000000/2;
+					bSetPositionRangeLimit := TRUE;
+					IF ftSetPositionRangeLimit.Q THEN
+						bSetPositionRangeLimit := FALSE;
+						nTargetPosition := 5000000;
+						ePositionRangeLimitState := TEST_POSITION_LIMIT;
+					END_IF
+					
+				TEST_POSITION_LIMIT:
+					bGetStatusword := TRUE;
+					IF ftGetStatusword.Q THEN
+						IF NOT nStatusword.10 THEN
+							bGetStatusword := FALSE;
+						ELSIF ((nCurrentPosition >=  (nMinPositionRangeLimitTest + 5000000/2) - nPositionWindow)
+							AND (nCurrentPosition <= (nMinPositionRangeLimitTest + 5000000/2) + nPositionWindow)) 
+							AND fbMoveInProfilePosition.bStartPositioning THEN
+							bPositionRangeLimit := TRUE;
+							ePositionRangeLimitState := RESET_POSITION_RANGE_LIMIT;
+						ELSIF fbMoveInProfilePosition.bStartPositioning THEN
+							bPositionRangeLimit := FALSE;
+							ePositionRangeLimitState := RESET_POSITION_RANGE_LIMIT;
+						END_IF
+						bGetStatusword := FALSE;
+					END_IF
+				
+				RESET_POSITION_RANGE_LIMIT:
+					nMinPositionRangeLimitTest := nMinPositionRangeLimit;
+					nMaxPositionRangeLimitTest := nMaxPositionRangeLimit;
+					bSetPositionRangeLimit := TRUE;
+					IF ftSetPositionRangeLimit THEN
+						eTestSupportedPPObjects := SOFTWARE_POSITION_LIMIT;
+					END_IF	
+			END_CASE
 
-//607B Position range limit
-
-//607D Software position limit
+		//607D Software position limit
+		SOFTWARE_POSITION_LIMIT:
+			
+				ePositionRangeLimitState := GET_CURRENT_POSITION_RANGE_LIMIT;
+			
+			
 
 //607F Max profile velocity
 
@@ -293,7 +417,9 @@ END_IF
 
 //60C5 Max acceleration
 
-//60C6 Max deceleration]]></ST>
+//60C6 Max deceleration
+	END_CASE
+END_IF]]></ST>
     </Implementation>
     <Method Name="SetPositioningOptionCode" Id="{9ca73585-e03c-4c37-93ed-918ec51924a2}">
       <Declaration><![CDATA[METHOD SetPositioningOptionCode 
@@ -330,7 +456,10 @@ END_IF]]></ST>
       <LineId Id="753" Count="0" />
       <LineId Id="94" Count="0" />
       <LineId Id="347" Count="0" />
+      <LineId Id="1070" Count="0" />
       <LineId Id="762" Count="0" />
+      <LineId Id="1151" Count="0" />
+      <LineId Id="1150" Count="0" />
       <LineId Id="754" Count="0" />
       <LineId Id="211" Count="0" />
       <LineId Id="210" Count="0" />
@@ -346,9 +475,17 @@ END_IF]]></ST>
       <LineId Id="139" Count="2" />
       <LineId Id="337" Count="3" />
       <LineId Id="343" Count="2" />
+      <LineId Id="1048" Count="4" />
+      <LineId Id="1056" Count="1" />
+      <LineId Id="1055" Count="0" />
+      <LineId Id="1062" Count="5" />
+      <LineId Id="1061" Count="0" />
       <LineId Id="232" Count="2" />
       <LineId Id="238" Count="0" />
       <LineId Id="235" Count="2" />
+      <LineId Id="1082" Count="4" />
+      <LineId Id="1090" Count="8" />
+      <LineId Id="1152" Count="1" />
       <LineId Id="142" Count="0" />
       <LineId Id="173" Count="0" />
       <LineId Id="137" Count="0" />
@@ -443,22 +580,52 @@ END_IF]]></ST>
       <LineId Id="906" Count="7" />
       <LineId Id="916" Count="0" />
       <LineId Id="923" Count="0" />
-      <LineId Id="961" Count="2" />
+      <LineId Id="961" Count="1" />
+      <LineId Id="1013" Count="0" />
+      <LineId Id="963" Count="0" />
       <LineId Id="917" Count="0" />
       <LineId Id="920" Count="0" />
       <LineId Id="966" Count="1" />
       <LineId Id="969" Count="0" />
+      <LineId Id="1012" Count="0" />
       <LineId Id="968" Count="0" />
       <LineId Id="921" Count="1" />
       <LineId Id="905" Count="0" />
       <LineId Id="658" Count="0" />
+      <LineId Id="1010" Count="0" />
       <LineId Id="971" Count="0" />
-      <LineId Id="970" Count="0" />
-      <LineId Id="972" Count="0" />
-      <LineId Id="974" Count="0" />
-      <LineId Id="973" Count="0" />
+      <LineId Id="1016" Count="0" />
+      <LineId Id="1035" Count="0" />
+      <LineId Id="1038" Count="1" />
+      <LineId Id="1036" Count="0" />
+      <LineId Id="1020" Count="0" />
+      <LineId Id="1001" Count="0" />
+      <LineId Id="1042" Count="0" />
+      <LineId Id="1044" Count="0" />
+      <LineId Id="1072" Count="4" />
+      <LineId Id="1101" Count="1" />
+      <LineId Id="1078" Count="0" />
+      <LineId Id="1099" Count="0" />
+      <LineId Id="1136" Count="0" />
+      <LineId Id="1109" Count="0" />
+      <LineId Id="1103" Count="3" />
+      <LineId Id="1110" Count="6" />
+      <LineId Id="1118" Count="0" />
+      <LineId Id="1127" Count="0" />
+      <LineId Id="1121" Count="0" />
+      <LineId Id="1124" Count="0" />
+      <LineId Id="1128" Count="0" />
+      <LineId Id="1125" Count="1" />
+      <LineId Id="1107" Count="0" />
+      <LineId Id="1131" Count="4" />
+      <LineId Id="1137" Count="2" />
+      <LineId Id="1043" Count="0" />
       <LineId Id="976" Count="0" />
       <LineId Id="975" Count="0" />
+      <LineId Id="1129" Count="1" />
+      <LineId Id="1142" Count="0" />
+      <LineId Id="1141" Count="0" />
+      <LineId Id="1140" Count="0" />
       <LineId Id="978" Count="0" />
       <LineId Id="977" Count="0" />
       <LineId Id="980" Count="0" />
@@ -480,6 +647,8 @@ END_IF]]></ST>
       <LineId Id="994" Count="0" />
       <LineId Id="997" Count="0" />
       <LineId Id="996" Count="0" />
+      <LineId Id="1019" Count="0" />
+      <LineId Id="1014" Count="0" />
     </LineIds>
     <LineIds Name="P_ProfilePositionModeTest.SetPositioningOptionCode">
       <LineId Id="7" Count="1" />
