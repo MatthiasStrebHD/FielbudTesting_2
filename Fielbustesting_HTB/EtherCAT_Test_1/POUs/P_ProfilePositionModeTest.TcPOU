@@ -25,7 +25,7 @@ VAR
 	bTestAbsolutePositioning		: BOOL;
 	nTargetPosition					: DINT;
 	nCurrentPosition				: DINT;
-	nTargetPositionBuf				: DINT;
+	nTargetPositionBuf				: DINT;  
 	nPositionDemandValue			: DINT;
 	nStatusword						: UINT;
 	nPositionWindow					: UDINT;
@@ -45,7 +45,7 @@ END_VAR
 VAR
 	bSetOfSetpointFinished 			: BOOL;
 	nCurrentPositionBuf				: DINT;
-	bSetPointSet					: BOOL;  //For both
+	bSetpointSet					: BOOL;  //For both -> Test Change Immediately
 	bSetOfSetpoints					: BOOL;
 	bStartBasicOperationAbs			: BOOL;
 	bTestSetOfSetpoints				: BOOL;
@@ -64,6 +64,7 @@ VAR
 	ftSetPositioningOptionCode		: F_TRIG;
 	fbSetPositioningOptionCode		: FB_EcCoeSdoWrite;
 	bTestRelativePositioning		: BOOL;
+	bRelativePositioning			: BOOL := TRUE;
 	bRelativePositioningFinished	: BOOL;
 	nPositioningOptionCode			: DINT;
 	nCounter						: DINT;
@@ -197,29 +198,114 @@ END_IF
 //Test relative positioning:
 //Bit 6 of Controlword is set to 1
 
-IF bTestRelativePositioning THEN
+IF bTestRelativePositioning  AND bRelativePositioning THEN
 	MAIN.Controlword.6 := 1;
 	//positioning option code: 0
 	//Positioning moves shall be performed relative to the preciding
 	//target position
-	IF nCounter = 0 THEN
-		nPositioningOptionCode := 0;
+	IF nCounter = 0 AND NOT bSetpointSet THEN 
+		SetPositioningOptionCode(nPositioningOptionCodeInput := 0);
 		IF ftSetPositioningOptionCode.Q THEN
+			bSetPositioningOptionCode := FALSE;
+			nTargetPositionBuf := nCurrentPosition + 5000000;
 			nTargetPosition := 5000000;
+			bSetpointSet := TRUE;
+			nCounter := nCounter + 1;
 		END_IF
-		
-		nCounter := nCounter + 1;
 	END_IF
 
 	//positioning option code: 2#0001
 	//Positioning moves shall be performed relative to the actual
 	//positioning demand value (16#60FC)
+	IF nCounter = 1 AND NOT bSetpointSet THEN
+		SetPositioningOptionCode(nPositioningOptionCodeInput := 2#0001);
+		bGetPositionDemandValue := TRUE;
+		IF ftGetPositionDemandValue.Q THEN
+			bSetPositioningOptionCode := FALSE;
+			nTargetPositionBuf := nPositionDemandValue + 6000000;
+			nTargetPosition := 6000000;
+			bSetpointSet := TRUE;
+			nCounter := nCounter + 1;
+		END_IF
+	END_IF
 	
 	//positioning option code : 2#0010
 	//Positioning moves shall be performed relative to the position
 	//actual value (16#6064)
-END_IF]]></ST>
+	IF nCounter = 2 AND NOT bSetpointSet THEN
+		SetPositioningOptionCode(nPositioningOptionCodeInput := 2#0010);
+		IF ftSetPositioningOptionCode.Q THEN
+			bSetPositioningOptionCode := FALSE;
+			nTargetPositionBuf := nCurrentPosition + 5000000;
+			nTargetPosition := 5000000;
+			bSetpointSet := TRUE;
+			nCounter := nCounter + 1;
+		END_IF
+	END_IF
+	
+	bGetStatusword := TRUE;
+	IF ftGetStatusword.Q THEN
+		IF NOT nStatusword.10 THEN
+			bGetStatusword := FALSE;
+		ELSIF ((nCurrentPosition >= nTargetPositionBuf - nPositionWindow)
+				AND (nCurrentPosition <= nTargetPositionBuf + nPositionWindow)) 
+				AND bSetpointSet THEN
+			//relative Positioning positive
+			bTestRelativePositioning := TRUE;
+			bSetpointSet := FALSE;
+			IF nCounter = 3 THEN
+				bTestRelativePositioning := FALSE;
+			END_IF
+		ELSIF fbMoveInProfilePosition.bStartPositioning THEN
+			bSetpointSet := FALSE;
+			IF nCounter = 3 THEN
+				bTestRelativePositioning := FALSE;
+				//Actually redundant, but left in for consistensy reasons
+			END_IF
+		END_IF
+		bGetStatusword := FALSE;
+	END_IF
+END_IF
+
+//Test of supported profile position mode objects
+//607A - Target Position mode - already tested
+
+//607B Position range limit
+
+//607D Software position limit
+
+//607F Max profile velocity
+
+//6080 Max motor speed
+
+//6081 Profile velocity
+
+//6082 End velocity
+
+//6083 Profile acceleration
+
+//6084 Profile deceleration 
+
+//6085 Quick stop deceleration
+//-> to be tested during quick stop tests
+
+//6086 Motion profile type
+
+//60C5 Max acceleration
+
+//60C6 Max deceleration]]></ST>
     </Implementation>
+    <Method Name="SetPositioningOptionCode" Id="{9ca73585-e03c-4c37-93ed-918ec51924a2}">
+      <Declaration><![CDATA[METHOD SetPositioningOptionCode 
+VAR_INPUT
+	nPositioningOptionCodeInput		: DINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[nPositioningOptionCode := nPositioningOptionCodeInput;
+bSetPositioningOptionCode := TRUE;]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="TestChangeOfSetpoints" Id="{15b5872a-9abe-416f-a38b-72ef3f958d08}">
       <Declaration><![CDATA[METHOD TestChangeOfSetpoints : BOOL
 VAR_OUTPUT
@@ -327,12 +413,76 @@ END_IF]]></ST>
       <LineId Id="660" Count="1" />
       <LineId Id="677" Count="1" />
       <LineId Id="681" Count="0" />
-      <LineId Id="685" Count="1" />
-      <LineId Id="682" Count="0" />
-      <LineId Id="680" Count="0" />
+      <LineId Id="957" Count="0" />
+      <LineId Id="833" Count="0" />
+      <LineId Id="685" Count="0" />
+      <LineId Id="903" Count="0" />
+      <LineId Id="830" Count="0" />
+      <LineId Id="686" Count="0" />
       <LineId Id="679" Count="0" />
-      <LineId Id="662" Count="7" />
+      <LineId Id="662" Count="3" />
+      <LineId Id="943" Count="0" />
+      <LineId Id="947" Count="1" />
+      <LineId Id="925" Count="0" />
+      <LineId Id="958" Count="0" />
+      <LineId Id="934" Count="0" />
+      <LineId Id="955" Count="0" />
+      <LineId Id="935" Count="1" />
+      <LineId Id="933" Count="0" />
+      <LineId Id="927" Count="0" />
+      <LineId Id="666" Count="3" />
+      <LineId Id="904" Count="0" />
+      <LineId Id="941" Count="1" />
+      <LineId Id="959" Count="0" />
+      <LineId Id="950" Count="0" />
+      <LineId Id="956" Count="0" />
+      <LineId Id="952" Count="1" />
+      <LineId Id="951" Count="0" />
+      <LineId Id="939" Count="0" />
+      <LineId Id="937" Count="0" />
+      <LineId Id="906" Count="7" />
+      <LineId Id="916" Count="0" />
+      <LineId Id="923" Count="0" />
+      <LineId Id="961" Count="2" />
+      <LineId Id="917" Count="0" />
+      <LineId Id="920" Count="0" />
+      <LineId Id="966" Count="1" />
+      <LineId Id="969" Count="0" />
+      <LineId Id="968" Count="0" />
+      <LineId Id="921" Count="1" />
+      <LineId Id="905" Count="0" />
       <LineId Id="658" Count="0" />
+      <LineId Id="971" Count="0" />
+      <LineId Id="970" Count="0" />
+      <LineId Id="972" Count="0" />
+      <LineId Id="974" Count="0" />
+      <LineId Id="973" Count="0" />
+      <LineId Id="976" Count="0" />
+      <LineId Id="975" Count="0" />
+      <LineId Id="978" Count="0" />
+      <LineId Id="977" Count="0" />
+      <LineId Id="980" Count="0" />
+      <LineId Id="979" Count="0" />
+      <LineId Id="982" Count="0" />
+      <LineId Id="981" Count="0" />
+      <LineId Id="984" Count="0" />
+      <LineId Id="983" Count="0" />
+      <LineId Id="986" Count="0" />
+      <LineId Id="985" Count="0" />
+      <LineId Id="988" Count="0" />
+      <LineId Id="987" Count="0" />
+      <LineId Id="990" Count="0" />
+      <LineId Id="989" Count="0" />
+      <LineId Id="991" Count="0" />
+      <LineId Id="993" Count="0" />
+      <LineId Id="992" Count="0" />
+      <LineId Id="995" Count="0" />
+      <LineId Id="994" Count="0" />
+      <LineId Id="997" Count="0" />
+      <LineId Id="996" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ProfilePositionModeTest.SetPositioningOptionCode">
+      <LineId Id="7" Count="1" />
     </LineIds>
     <LineIds Name="P_ProfilePositionModeTest.TestChangeOfSetpoints">
       <LineId Id="6" Count="7" />
