@@ -4,7 +4,8 @@
     <Declaration><![CDATA[PROGRAM BasicTests
 VAR
 	fbSetToVelocityMode		: FB_EcCoeSdoWrite;
-	fbRead					: FB_EcCoeSdoRead;
+	fbReadAcc				: FB_EcCoeSdoRead;
+	fbWriteAcc				: FB_EcCoeSdoWrite;
 	fbReadVMax				: FB_EcCoeSdoRead;
 	fbReadVMin				: FB_EcCoeSdoRead;
 	fbReadVAct				: FB_EcCoeSdoRead;
@@ -20,29 +21,22 @@ VAR
 	bReadVMin: BOOL;
 	fvmaxtrig: F_TRIG;
 	nActualVelocity			: DINT;
+	
+	tReadAccSpeed			: TON;
+	tReadAccTime			: TON;
+	bGetAccSpeed			: BOOL;
+	bGetAccTime				: BOOL;
+	nAcc: DINT;
+	nSpeed: DINT;
+	nTime: DINT;
+	nSpeedRef: DINT := 800;
+	bSetAccSpeed: BOOL;
+	nTimeRef: DINT := 1;
+	bSetAccTime: BOOL;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[
-fTrig(CLK := fbSetToVelocityMode.bBusy);
-fbSetToVelocityMode(sNetId := GVL.sNetId, 
-				nSlaveAddr := GVL.nSlaveAddr,
-				nIndex := 16#6060,
-				pSrcBuf := ADR(nModeOfOperation),
-				cbBufLen := SIZEOF (nModeOfOperation),
-				bExecute := bSetToVelocityMode);
-IF fTrig.Q THEN
-	bAnzeigeBusy := TRUE;
-END_IF
-
-fbRead(sNetId := GVL.sNetId,
-				nSlaveAddr := GVL.nSlaveAddr,
-				nIndex := 16#6060,
-				nSubindex := 0,
-				pDstBuf := ADR(nMode),
-				cbBufLen := SIZEOF(nMode),
-				bExecute := bRead);
-				
 fbReadVMax(sNetId := GVL.sNetId,
 				nSlaveAddr := GVL.nSlaveAddr,
 				nIndex := 16#6046,
@@ -50,11 +44,7 @@ fbReadVMax(sNetId := GVL.sNetId,
 				pDstBuf := ADR(nVMax),
 				cbBufLen := SIZEOF(nVMax),
 				bExecute := bReadVMax);
-				
-fvmaxtrig(CLK := fbReadVMax.bBusy);
-IF fvmaxtrig.Q THEN
-	bReadVMin := TRUE;
-END_IF
+
 fbReadVMin(sNetId := GVL.sNetId,
 				nSlaveAddr := GVL.nSlaveAddr,
 				nIndex := 16#6046,
@@ -64,26 +54,97 @@ fbReadVMin(sNetId := GVL.sNetId,
 				bExecute := bReadVMin);
 
 
+ //velocity acceleration
+tReadAccSpeed(IN := bGetAccSpeed, 
+		PT := T#100MS); 
+IF tReadAccSpeed.Q THEN
+	bGetAccSpeed := FALSE;
+ELSE
+	bGetAccSpeed := TRUE;		
+END_IF
+tReadAccTime(IN := bGetAccTime, 
+		PT := T#100MS); 
+IF tReadAccTime.Q THEN
+	bGetAccTime := FALSE;
+ELSE
+	bGetAccTime := TRUE;		
+END_IF
+
+
+
+fbReadAcc(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6048,
+				nSubindex := 1, //delta speed
+				pDstBuf := ADR(nSpeed),
+				cbBufLen := SIZEOF(nSpeed),
+				bExecute := bGetAccSpeed);
+				
+fbReadAcc(bExecute := FALSE);		
+fbReadAcc(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6048,
+				nSubindex := 2, //delta time
+				pDstBuf := ADR(nTime),
+				cbBufLen := SIZEOF(nTime),
+				bExecute := bGetAccTime);	
+			
+fbWriteAcc(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6048,
+				nSubindex := 1, //delta speed
+				pSrcBuf := ADR(nSpeedRef),
+				cbBufLen := SIZEOF(nSpeedRef),
+				bExecute := bSetAccSpeed);
+				
+fbWriteAcc(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6048,
+				nSubindex := 2, //delta time
+				pSrcBuf := ADR(nTimeRef),
+				cbBufLen := SIZEOF(nTimeRef),
+				bExecute := bSetAccTime);
+
+IF nSpeed>0 AND nTime>0 THEN 
+	nAcc := nSpeed / nTime;
+END_IF
+
+
+
+
+
 
 
 
 ]]></ST>
     </Implementation>
     <LineIds Name="BasicTests">
-      <LineId Id="61" Count="0" />
-      <LineId Id="6" Count="0" />
-      <LineId Id="62" Count="0" />
-      <LineId Id="7" Count="4" />
-      <LineId Id="58" Count="0" />
-      <LineId Id="63" Count="1" />
-      <LineId Id="38" Count="7" />
-      <LineId Id="70" Count="8" />
-      <LineId Id="90" Count="1" />
-      <LineId Id="93" Count="0" />
+      <LineId Id="197" Count="0" />
+      <LineId Id="71" Count="6" />
       <LineId Id="79" Count="0" />
       <LineId Id="96" Count="0" />
       <LineId Id="80" Count="5" />
-      <LineId Id="20" Count="4" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="227" Count="13" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="272" Count="0" />
+      <LineId Id="271" Count="0" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="145" Count="6" />
+      <LineId Id="317" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="276" Count="6" />
+      <LineId Id="292" Count="7" />
+      <LineId Id="306" Count="0" />
+      <LineId Id="300" Count="5" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="269" Count="0" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="270" Count="0" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="126" Count="5" />
       <LineId Id="5" Count="0" />
     </LineIds>
   </POU>

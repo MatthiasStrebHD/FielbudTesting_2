@@ -26,10 +26,6 @@
 					<Type>DINT</Type>
 				</Var>
 				<Var>
-					<Name>MAIN.TargetVelocity</Name>
-					<Type>DINT</Type>
-				</Var>
-				<Var>
 					<Name>GVL.Controlword</Name>
 					<Type>UINT</Type>
 				</Var>

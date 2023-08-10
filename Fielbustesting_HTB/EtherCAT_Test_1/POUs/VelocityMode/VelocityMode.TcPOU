@@ -36,7 +36,7 @@ END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[GetVMaxLimit();
 GetVMinLimit();
-bBusy := TRUE;
+bBusy := TRUE; //FB VelocityMode is busy and the target velocity is not jet set
 
 CASE eMotionState OF
 	WAIT_FOR_TRIGGER:
@@ -75,7 +75,7 @@ CASE eMotionState OF
 			eMotionState := SET_LIMIT;
 		ELSE
 			bSetVelocity := FALSE;
-			bBusy := FALSE;
+			bBusy := FALSE; //FB 
 		END_IF
 		
 	
