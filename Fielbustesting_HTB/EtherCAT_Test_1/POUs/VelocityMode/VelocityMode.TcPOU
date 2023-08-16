@@ -63,7 +63,7 @@ CASE eMotionState OF
 				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 					msgFmtStr := 'Device successfully enabled',
 					strArg := '');
-				eMotionState := SET_LIMIT; 
+				eMotionState := WAIT_FOR_NEW_VELOCITY; 
 			END_IF
 		END_IF
 		
@@ -76,6 +76,7 @@ CASE eMotionState OF
 		ELSE
 			bSetVelocity := FALSE;
 			bBusy := FALSE; //FB 
+			fbSetVelocity(bExecute := FALSE);
 		END_IF
 		
 	
@@ -170,6 +171,7 @@ END_VAR
 					pDstBuf := ADR(nVelocityLimitMax),
 					cbBufLen := SIZEOF(nVelocityLimitMax),
 					bExecute := TRUE);
+fbGetVelocityLimitMax(bExecute := FALSE);
 
 ]]></ST>
       </Implementation>
@@ -186,7 +188,8 @@ END_VAR
 					nIndex := 16#6046, 
 					pDstBuf := ADR(nVelocityLimitMin),
 					cbBufLen := SIZEOF(nVelocityLimitMin),
-					bExecute := TRUE);]]></ST>
+					bExecute := TRUE);
+fbGetVelocityLimitMin(bExecute := FALSE);]]></ST>
       </Implementation>
     </Method>
     <LineIds Name="VelocityMode">
@@ -200,6 +203,7 @@ END_VAR
       <LineId Id="1322" Count="0" />
       <LineId Id="1348" Count="1" />
       <LineId Id="1352" Count="0" />
+      <LineId Id="1389" Count="0" />
       <LineId Id="1323" Count="0" />
       <LineId Id="1318" Count="0" />
       <LineId Id="1321" Count="0" />
@@ -224,14 +228,16 @@ END_VAR
       <LineId Id="19" Count="0" />
     </LineIds>
     <LineIds Name="VelocityMode.GetVMaxLimit">
-      <LineId Id="6" Count="5" />
+      <LineId Id="17" Count="5" />
       <LineId Id="5" Count="0" />
+      <LineId Id="29" Count="0" />
       <LineId Id="13" Count="0" />
       <LineId Id="12" Count="0" />
     </LineIds>
     <LineIds Name="VelocityMode.GetVMinLimit">
       <LineId Id="6" Count="5" />
       <LineId Id="5" Count="0" />
+      <LineId Id="15" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

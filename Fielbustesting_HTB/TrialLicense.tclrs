@@ -1,35 +1,10 @@
 <?xml version="1.0"?>
 <TcLicenseInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2011/11/TcLicenseInfo">
 	<LicenseInfo>
-		<SystemId>{58DA2330-75C7-8DE5-B198-B6C3726BDA69}</SystemId>
-		<IssueTime>2023-08-10T07:41:00</IssueTime>
-		<ExpireTime>2023-08-18T00:00:00</ExpireTime>
-		<LicenseKey>270e8b340ca2f6c8a12367b29273feda90b5e0bb663b0757cebb3dcd262ff881a6fafd6aeda32594cd5f3b7efd77d2a7b434e91a57620078b5cb38b37ed0a2335a3869dee94c71a980716d66bb49d9e1a55a322dfc2add70a6e5d60733a8805efffd52bf71fd2ee27cec1f85a1aa6d72322d61369ea357ddc7fceeb0e361cd25e4ae2f460eae5642200ded0183790337f2365b05ba75feeeada44d61903dba2da8beeb78fc65e563a3bb6892032212f556de3aef7fbece0181f5189daf93e104c58673a5a774e1caffc861409555509893fb4becc48626aef5647e3df3ef34ac32e430c0492bdf450ab5d06cf566cc1bf37a29068ec7e284d252133c04fa2077</LicenseKey>
-		<License>
-			<LicenseId>{4C256767-E6E6-4AF5-BD68-9F7ABAD0C200}</LicenseId>
-			<Name>TC3 ADS</Name>
-			<OrderNo>TC1000</OrderNo>
-		</License>
-		<License>
-			<LicenseId>{3FF18E97-7754-401B-93FB-70544DE28A13}</LicenseId>
-			<Name>TC3 IO</Name>
-			<OrderNo>TC1100</OrderNo>
-		</License>
-		<License>
-			<LicenseId>{66689887-CCBD-452C-AC9A-039D997C6E66}</LicenseId>
-			<Name>TC3 PLC</Name>
-			<OrderNo>TC1200</OrderNo>
-		</License>
-		<License>
-			<LicenseId>{A19036CF-A53B-4E3A-99FF-023EF5C4798B}</LicenseId>
-			<Name>TC3 NC PTP Axis</Name>
-			<Instances>10</Instances>
-		</License>
-		<License>
-			<LicenseId>{520DE751-9DB6-47CB-8240-BD5C466E7E64}</LicenseId>
-			<Name>TC3 NC PTP</Name>
-			<OrderNo>TF5000</OrderNo>
-		</License>
+		<SystemId>{62E45593-A4F8-0C76-F881-84FB3D2CD0E9}</SystemId>
+		<IssueTime>2023-08-16T09:36:00</IssueTime>
+		<ExpireTime>2023-08-24T00:00:00</ExpireTime>
+		<LicenseKey>0959df5f5d0f0ef5bf245215ff213aaff47ceee700bfa1b7707a94352256b3376aa2e1c91b7d331a8b5064918c26da2bbfe99f7d9411554bd93cc2738067db3a2b59b3437440be9df7ddcdcd6d8a1a58905b544282f2c5fa5e6e2e9ae5a609ef462a63febce4f5f3951bd0ed5e19aa9203d07fbb47b77eb6474bed86271ed7fe0c04eb976db38b7a47ba122b596d6d72c912b3a776715a8cedf5ba42512d43d605daad5f0f293827d08dd712684b1ee74652f31f9b028631a0ae9eebb318b15cd90f13e6eef7b81931b02b124532fdd53e12b5f760c4a5bffab06ca5a3a3fda136b2e01c4ed8e07150aa9df114b541dbf24c65709f211560ecf626fda3e9e200</LicenseKey>
 		<License>
 			<LicenseId>{AECBCEB9-4222-4369-8961-4A7488DAE203}</LicenseId>
 			<Name>TC3 HVAC</Name>

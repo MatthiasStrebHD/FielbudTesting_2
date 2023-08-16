@@ -12,7 +12,7 @@ END_VAR
 
 VAR
 	bStartUpTest			: BOOL;
-	bVelocityModeActive		: BOOL := TRUE; //TODO set false
+	bVelocityModeActive		: BOOL := FALSE;
 END_VAR	
 
 VAR
@@ -53,7 +53,7 @@ IF tSetToPPMode.Q THEN
 END_IF
 *)
 
-BasicTests();
+//BasicTests();
 
 //TODO read if velocitymode was set via FB
 fbSetToVelocityMode(sNetId := GVL.sNetId, 
@@ -67,7 +67,7 @@ fSetToVelocityMode(CLK := fbSetToVelocityMode.bBusy);
 IF fSetToVelocityMode.Q THEN
 	bVelocityModeActive := TRUE;
 	ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-				msgFmtStr := 'Log Msg',
+				msgFmtStr := 'Set to velocity mode.',
 				strArg := '');
 END_IF
 IF bVelocityModeActive THEN
