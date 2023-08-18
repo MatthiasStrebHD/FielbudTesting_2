@@ -38,6 +38,15 @@ END_VAR]]></Declaration>
 GetVMinLimit();
 bBusy := TRUE; //FB VelocityMode is busy and the target velocity is not jet set
 
+fbSetVelocity(sNetId := sNetID,
+			nSlaveAddr := nSlaveAddr,
+			nSubIndex := 0,
+			nIndex := 16#6042,
+			pSrcBuf := ADR(nVelocityBuff),
+			cbBufLen := SIZEOF(nVelocityBuff),
+			bExecute := bWriteToFB);
+					
+					
 CASE eMotionState OF
 	WAIT_FOR_TRIGGER:
 		MAIN.Controlword := 0;
@@ -76,7 +85,6 @@ CASE eMotionState OF
 		ELSE
 			bSetVelocity := FALSE;
 			bBusy := FALSE; //FB 
-			fbSetVelocity(bExecute := FALSE);
 		END_IF
 		
 	
@@ -100,13 +108,6 @@ CASE eMotionState OF
 	SET_VELOCITY:
 		//set velocity
 		bWriteToFB := TRUE;
-		fbSetVelocity(sNetId := sNetID,
-					nSlaveAddr := nSlaveAddr,
-					nSubIndex := 0,
-					nIndex := 16#6042,
-					pSrcBuf := ADR(nVelocityBuff),
-					cbBufLen := SIZEOF(nVelocityBuff),
-					bExecute := bWriteToFB);
 
 		fFlag(CLK := fbSetVelocity.bBusy); //falling edge at acknowledge of FB
 		
@@ -123,7 +124,7 @@ CASE eMotionState OF
 			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 				msgFmtStr := 'Validate Velocity',
 				strArg := '');
-			fbSetVelocity(bExecute := FALSE);
+			//fbSetVelocity(bExecute := FALSE);
 			eMotionState := VALIDATE_VELOCITY;
 		END_IF
 		
@@ -143,7 +144,6 @@ CASE eMotionState OF
 				msgFmtStr := 'Velocity is valid',
 				strArg := '');
 			ELSE 
-				bWriteToFB := FALSE;
 				bSuccess := FALSE;
 				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 					msgFmtStr := 'Error when validating velocity',
@@ -151,6 +151,7 @@ CASE eMotionState OF
 			END_IF
 			fbGetStatusword(bExecute := FALSE);
 			bSetVelocity := FALSE;
+			bWriteToFB := FALSE;
 			eMotionState := WAIT_FOR_NEW_VELOCITY;
 		END_IF
 		
@@ -196,14 +197,15 @@ fbGetVelocityLimitMin(bExecute := FALSE);]]></ST>
       <LineId Id="1314" Count="0" />
       <LineId Id="1313" Count="0" />
       <LineId Id="1347" Count="0" />
+      <LineId Id="1421" Count="6" />
       <LineId Id="1312" Count="0" />
+      <LineId Id="1428" Count="1" />
       <LineId Id="1081" Count="28" />
       <LineId Id="1316" Count="1" />
       <LineId Id="1326" Count="2" />
       <LineId Id="1322" Count="0" />
       <LineId Id="1348" Count="1" />
       <LineId Id="1352" Count="0" />
-      <LineId Id="1389" Count="0" />
       <LineId Id="1323" Count="0" />
       <LineId Id="1318" Count="0" />
       <LineId Id="1321" Count="0" />
@@ -214,16 +216,19 @@ fbGetVelocityLimitMin(bExecute := FALSE);]]></ST>
       <LineId Id="1131" Count="9" />
       <LineId Id="1357" Count="0" />
       <LineId Id="1141" Count="0" />
-      <LineId Id="1143" Count="10" />
+      <LineId Id="1143" Count="2" />
+      <LineId Id="1153" Count="0" />
       <LineId Id="1263" Count="0" />
       <LineId Id="1155" Count="4" />
       <LineId Id="1229" Count="2" />
       <LineId Id="1160" Count="6" />
       <LineId Id="1336" Count="0" />
       <LineId Id="1167" Count="14" />
-      <LineId Id="1183" Count="9" />
+      <LineId Id="1183" Count="3" />
+      <LineId Id="1188" Count="4" />
       <LineId Id="1343" Count="0" />
       <LineId Id="1315" Count="0" />
+      <LineId Id="1431" Count="0" />
       <LineId Id="1193" Count="4" />
       <LineId Id="19" Count="0" />
     </LineIds>
