@@ -22,6 +22,7 @@ VAR
 	fbGetStatusword			: FB_EcCoeSdoRead;
 	fbGetVelocityLimitMin	: FB_EcCoeSdoRead;
 	fbGetVelocityLimitMax	: FB_EcCoeSdoRead;
+	fbGetVelocityDemand		: FB_EcCoeSdoRead;
 	tWait					: TON;
 	tWait2					: TON;
 	nStatusword				: UINT;
@@ -32,10 +33,14 @@ VAR
 	nVelocityLimitMin		: DINT;
 	nVelocityLimitMax		: DINT;
 	nVelocityBuff			: DINT;
+	nVelocityDemand: DINT;
+	fbReadVelocityLimits1			: FB_EcCoeSdoRead;
+	fbReadVelocityLimits2			: FB_EcCoeSdoRead;
 END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[GetVMaxLimit();
-GetVMinLimit();
+      <ST><![CDATA[//GetVMaxLimit();
+//GetVMinLimit();
+ReadLimits();
 bBusy := TRUE; //FB VelocityMode is busy and the target velocity is not jet set
 
 fbSetVelocity(sNetId := sNetID,
@@ -69,18 +74,12 @@ CASE eMotionState OF
 					strArg := '');
 				eMotionState := WAIT_FOR_TRIGGER;
 			ELSE
-				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-					msgFmtStr := 'Device successfully enabled',
-					strArg := '');
 				eMotionState := WAIT_FOR_NEW_VELOCITY; 
 			END_IF
 		END_IF
 		
 	WAIT_FOR_NEW_VELOCITY:
 		IF nTargetVelocity <> nVelocityBuff THEN
-			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-				msgFmtStr := 'Check Limits',
-				strArg := '');
 			eMotionState := SET_LIMIT;
 		ELSE
 			bSetVelocity := FALSE;
@@ -108,8 +107,11 @@ CASE eMotionState OF
 	SET_VELOCITY:
 		//set velocity
 		bWriteToFB := TRUE;
-
-		fFlag(CLK := fbSetVelocity.bBusy); //falling edge at acknowledge of FB
+		fFlag(CLK := fbSetVelocity.bBusy); 
+		
+		IF fFlag.Q THEN
+			eMotionState := VALIDATE_VELOCITY;
+		END_IF
 		
 		IF fbSetVelocity.bError THEN
 			//Error when setting Target Velocity
@@ -120,13 +122,7 @@ CASE eMotionState OF
 				strArg := '');
 			eMotionState := WAIT_FOR_TRIGGER;
 		END_IF
-		IF fFlag.Q THEN
-			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-				msgFmtStr := 'Validate Velocity',
-				strArg := '');
-			//fbSetVelocity(bExecute := FALSE);
-			eMotionState := VALIDATE_VELOCITY;
-		END_IF
+		
 		
 	VALIDATE_VELOCITY:
 		bGetStatusword := TRUE;
@@ -146,7 +142,7 @@ CASE eMotionState OF
 			ELSE 
 				bSuccess := FALSE;
 				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-					msgFmtStr := 'Error when validating velocity',
+					msgFmtStr := 'Error when validating velocity. Controlword not set.',
 					strArg := '');
 			END_IF
 			fbGetStatusword(bExecute := FALSE);
@@ -193,16 +189,45 @@ END_VAR
 fbGetVelocityLimitMin(bExecute := FALSE);]]></ST>
       </Implementation>
     </Method>
+    <Method Name="ReadLimits" Id="{ac9974f2-f4d7-4523-94a4-5e300b13c19f}">
+      <Declaration><![CDATA[METHOD ReadLimits : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbReadVelocityLimits1(nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 1, //v_min
+			pDstBuf := ADR(nVelocityLimitMin),
+			cbBufLen := SIZEOF(nVelocityLimitMin),
+			bExecute := TRUE);
+	
+	fbReadVelocityLimits2(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 2, //v_max
+			pDstBuf := ADR(nVelocityLimitMax),
+			cbBufLen := SIZEOF(nVelocityLimitMax),
+			bExecute := TRUE);
+			
+IF NOT fbReadVelocityLimits1.bBusy AND NOT fbReadVelocityLimits2.bBusy THEN
+	fbReadVelocityLimits1(bExecute := FALSE); 
+	fbReadVelocityLimits2(bExecute := FALSE); 
+END_IF]]></ST>
+      </Implementation>
+    </Method>
     <LineIds Name="VelocityMode">
       <LineId Id="1314" Count="0" />
       <LineId Id="1313" Count="0" />
+      <LineId Id="1523" Count="0" />
       <LineId Id="1347" Count="0" />
       <LineId Id="1421" Count="6" />
       <LineId Id="1312" Count="0" />
       <LineId Id="1428" Count="1" />
-      <LineId Id="1081" Count="28" />
-      <LineId Id="1316" Count="1" />
-      <LineId Id="1326" Count="2" />
+      <LineId Id="1081" Count="20" />
+      <LineId Id="1105" Count="4" />
+      <LineId Id="1316" Count="0" />
+      <LineId Id="1328" Count="0" />
       <LineId Id="1322" Count="0" />
       <LineId Id="1348" Count="1" />
       <LineId Id="1352" Count="0" />
@@ -218,12 +243,15 @@ fbGetVelocityLimitMin(bExecute := FALSE);]]></ST>
       <LineId Id="1141" Count="0" />
       <LineId Id="1143" Count="2" />
       <LineId Id="1153" Count="0" />
-      <LineId Id="1263" Count="0" />
-      <LineId Id="1155" Count="4" />
-      <LineId Id="1229" Count="2" />
-      <LineId Id="1160" Count="6" />
-      <LineId Id="1336" Count="0" />
-      <LineId Id="1167" Count="14" />
+      <LineId Id="1476" Count="0" />
+      <LineId Id="1156" Count="0" />
+      <LineId Id="1166" Count="2" />
+      <LineId Id="1486" Count="0" />
+      <LineId Id="1477" Count="7" />
+      <LineId Id="1169" Count="0" />
+      <LineId Id="1487" Count="0" />
+      <LineId Id="1485" Count="0" />
+      <LineId Id="1170" Count="11" />
       <LineId Id="1183" Count="3" />
       <LineId Id="1188" Count="4" />
       <LineId Id="1343" Count="0" />
@@ -243,6 +271,10 @@ fbGetVelocityLimitMin(bExecute := FALSE);]]></ST>
       <LineId Id="6" Count="5" />
       <LineId Id="5" Count="0" />
       <LineId Id="15" Count="0" />
+    </LineIds>
+    <LineIds Name="VelocityMode.ReadLimits">
+      <LineId Id="6" Count="17" />
+      <LineId Id="5" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

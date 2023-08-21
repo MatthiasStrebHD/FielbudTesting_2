@@ -28,6 +28,7 @@ VAR
 	tSetToPPMode			: TON;
 	fSetToVelocityMode		: F_TRIG;
 	nModeOfOperation		: UDINT := 2;
+	bBasicTest 				: BOOL := true;
 END_VAR
 
 ]]></Declaration>
@@ -52,10 +53,10 @@ IF tSetToPPMode.Q THEN
 	P_ProfilePositionModeTest();	
 END_IF
 *)
-
-BasicTests();
-
-//TODO read if velocitymode was set via FB
+IF bBasicTest THEN
+	BasicTests();
+ELSE
+//TODO read IF velocitymode was set via FB
 fbSetToVelocityMode(sNetId := GVL.sNetId, 
 				nSlaveAddr := GVL.nSlaveAddr,
 				nIndex := 16#6060,
@@ -73,7 +74,7 @@ END_IF
 IF bVelocityModeActive THEN
 	P_VelocityModeTest();
 END_IF
-]]></ST>
+END_IF]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
       <LineId Id="2" Count="0" />
@@ -94,15 +95,7 @@ END_IF
       <LineId Id="131" Count="0" />
       <LineId Id="248" Count="0" />
       <LineId Id="177" Count="0" />
-      <LineId Id="139" Count="4" />
-      <LineId Id="132" Count="1" />
-      <LineId Id="178" Count="0" />
-      <LineId Id="134" Count="0" />
-      <LineId Id="216" Count="0" />
-      <LineId Id="218" Count="0" />
-      <LineId Id="217" Count="0" />
-      <LineId Id="208" Count="2" />
-      <LineId Id="145" Count="1" />
+      <LineId Id="278" Count="16" />
       <LineId Id="130" Count="0" />
     </LineIds>
   </POU>

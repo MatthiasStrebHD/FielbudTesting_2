@@ -3,12 +3,16 @@
   <POU Name="BasicTests" Id="{9cc815f1-e038-4b96-a0f9-bc6181ca148a}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM BasicTests
 VAR
+	fbWriteMax : FB_EcCoESdoWrite;
+	fbWriteMin : FB_EcCoESdoWrite;
 	fbVelocityMode : VelocityMode;
-	nTargetVelocity : DINT := 100;
+	nTargetVelocity : DINT := 500;
 	bSetVelocity: BOOL;
 	nSpeed : DINT :=1000;
 	nTime : DINT := 1;
 	bWriteBasicTest: BOOL;
+	nMax: DINT := 4800;
+	nMin: DINT := 0;
 END_VAR
 VAR
 	fbSetToVelocityMode		: FB_EcCoeSdoWrite;
@@ -43,29 +47,26 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[IF bWriteBasicTest THEN
-fbWriteAcc1(sNetId := GVL.sNetId,
-			nSlaveAddr := GVL.nSlaveAddr,
-			nIndex := 16#6048,
-			nSubindex := 1, //delta speed
-			pSrcBuf := ADR(nSpeed),
-			cbBufLen := SIZEOF(nSpeed),
-			bExecute := TRUE);	
-				
-	fbWriteAcc2(sNetId := GVL.sNetId,
-			nSlaveAddr := GVL.nSlaveAddr,
-			nIndex := 16#6048,
-			nSubindex := 2, //delta time
-			pSrcBuf := ADR(nTime),
-			cbBufLen := SIZEOF(nTime),
-			bExecute := TRUE);
-END_IF]]></ST>
+      <ST><![CDATA[
+fbWriteMax(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6046,
+		nSubindex := 2, //max
+		pSrcBuf := ADR(nMax),
+		cbBufLen := SIZEOF(nMax),
+		bExecute := TRUE);	
+			
+fbWriteMin(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6046,
+		nSubindex := 1, //min
+		pSrcBuf := ADR(nMin),
+		cbBufLen := SIZEOF(nMin),
+		bExecute := TRUE);
+			]]></ST>
     </Implementation>
     <LineIds Name="BasicTests">
-      <LineId Id="458" Count="0" />
-      <LineId Id="440" Count="13" />
-      <LineId Id="437" Count="0" />
-      <LineId Id="459" Count="0" />
+      <LineId Id="510" Count="16" />
     </LineIds>
   </POU>
 </TcPlcObject>
