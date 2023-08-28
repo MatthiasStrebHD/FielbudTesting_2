@@ -5,7 +5,6 @@
 VAR_INPUT
 	sNetID					: T_AmsNetId;
 	nSlaveAddr				: UINT;
-	nTargetVelocity			: DINT;
 END_VAR
 VAR_OUTPUT
 	bSuccess				: BOOL;
@@ -14,6 +13,7 @@ VAR_OUTPUT
 END_VAR
 VAR_IN_OUT
 	bSetVelocity			: BOOL;
+	nTargetVelocity			: DINT;
 END_VAR
 VAR
 	eMotionState			: (WAIT_FOR_TRIGGER, ENABLE_DEVICE, WAIT_FOR_NEW_VELOCITY, SET_LIMIT, SET_VELOCITY, VALIDATE_VELOCITY, ACKNOWLEDGE_VELOCITY);
@@ -30,12 +30,13 @@ VAR
 	bExecuteWait			: BOOL;
 	bWriteToFB				: BOOL;
 	fFlag		 			: F_TRIG;
+	nVelocityBuff			: DINT := 0;
+	nVelocityDemand			: DINT;
+	fbReadVelocityLimits1	: FB_EcCoeSdoRead;
+	fbReadVelocityLimits2	: FB_EcCoeSdoRead;
+	bLimitActive			: BOOL;
 	nVelocityLimitMin		: DINT;
 	nVelocityLimitMax		: DINT;
-	nVelocityBuff			: DINT;
-	nVelocityDemand: DINT;
-	fbReadVelocityLimits1			: FB_EcCoeSdoRead;
-	fbReadVelocityLimits2			: FB_EcCoeSdoRead;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[//GetVMaxLimit();
@@ -78,6 +79,7 @@ CASE eMotionState OF
 			END_IF
 		END_IF
 		
+		
 	WAIT_FOR_NEW_VELOCITY:
 		IF nTargetVelocity <> nVelocityBuff THEN
 			eMotionState := SET_LIMIT;
@@ -91,27 +93,29 @@ CASE eMotionState OF
 		bBusy := TRUE;
 		nVelocityBuff := nTargetVelocity;
 		IF nVelocityBuff < nVelocityLimitMin THEN
+			bLimitActive := TRUE;
 			nVelocityBuff := nVelocityLimitMin;
 			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 				msgFmtStr := 'Velocity exceeds limit: Minimum limit was set',
 				strArg := '');
 		ELSIF nVelocityBuff > nVelocityLimitMax THEN
+			bLimitActive := TRUE;
 			nVelocityBuff := nVelocityLimitMax;
 			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 				msgFmtStr := 'Velocity exceeds limit: Maximum limit was set',
 				strArg := '');
+		ELSE 
+			bLimitActive := FALSE;
 		END_IF
+		nTargetVelocity := nVelocityBuff;
 		nTargetVelocityAfterLimit := nVelocityBuff;
 		eMotionState := SET_VELOCITY;
 	
+		
 	SET_VELOCITY:
 		//set velocity
 		bWriteToFB := TRUE;
-		fFlag(CLK := fbSetVelocity.bBusy); 
-		
-		IF fFlag.Q THEN
-			eMotionState := VALIDATE_VELOCITY;
-		END_IF
+		fFlag(CLK := fbSetVelocity.bBusy); 		
 		
 		IF fbSetVelocity.bError THEN
 			//Error when setting Target Velocity
@@ -121,6 +125,10 @@ CASE eMotionState OF
 				msgFmtStr := 'Error in set velocity',
 				strArg := '');
 			eMotionState := WAIT_FOR_TRIGGER;
+		END_IF
+		
+		IF fFlag.Q THEN
+			eMotionState := VALIDATE_VELOCITY;
 		END_IF
 		
 		
@@ -226,6 +234,7 @@ END_IF]]></ST>
       <LineId Id="1428" Count="1" />
       <LineId Id="1081" Count="20" />
       <LineId Id="1105" Count="4" />
+      <LineId Id="1575" Count="0" />
       <LineId Id="1316" Count="0" />
       <LineId Id="1328" Count="0" />
       <LineId Id="1322" Count="0" />
@@ -238,16 +247,26 @@ END_IF]]></ST>
       <LineId Id="1350" Count="0" />
       <LineId Id="1325" Count="0" />
       <LineId Id="1276" Count="0" />
-      <LineId Id="1131" Count="9" />
+      <LineId Id="1529" Count="0" />
+      <LineId Id="1131" Count="4" />
+      <LineId Id="1530" Count="0" />
+      <LineId Id="1136" Count="3" />
+      <LineId Id="1532" Count="0" />
+      <LineId Id="1534" Count="0" />
+      <LineId Id="1140" Count="0" />
+      <LineId Id="1573" Count="0" />
       <LineId Id="1357" Count="0" />
       <LineId Id="1141" Count="0" />
-      <LineId Id="1143" Count="2" />
+      <LineId Id="1143" Count="0" />
+      <LineId Id="1574" Count="0" />
+      <LineId Id="1144" Count="1" />
       <LineId Id="1153" Count="0" />
       <LineId Id="1476" Count="0" />
-      <LineId Id="1156" Count="0" />
-      <LineId Id="1166" Count="2" />
       <LineId Id="1486" Count="0" />
       <LineId Id="1477" Count="7" />
+      <LineId Id="1576" Count="0" />
+      <LineId Id="1579" Count="0" />
+      <LineId Id="1577" Count="1" />
       <LineId Id="1169" Count="0" />
       <LineId Id="1487" Count="0" />
       <LineId Id="1485" Count="0" />

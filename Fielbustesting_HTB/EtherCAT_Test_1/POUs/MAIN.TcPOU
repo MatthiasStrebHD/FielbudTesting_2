@@ -24,11 +24,11 @@ VAR
 	fbSetToPPMode			: FB_EcCoeSdoWrite;
 	fbSetToVelocityMode		: FB_EcCoeSdoWrite;
 	bSetToPPMode			: BOOL;
-	bSetToVelocityMode		: BOOL := TRUE;
+	bSetToVelocityMode		: BOOL;// := TRUE;
 	tSetToPPMode			: TON;
 	fSetToVelocityMode		: F_TRIG;
 	nModeOfOperation		: UDINT := 2;
-	bBasicTest 				: BOOL := true;
+	bBasicTest 				: BOOL := FALSE;
 END_VAR
 
 ]]></Declaration>

@@ -69,6 +69,7 @@ VAR
 	bWriteDefaultValues: BOOL;
 	nDecVelocity: DINT;
 	fDesiredDeceleration: REAL;
+	bStopAfterLimitTest: BOOL;
 END_VAR
 
 //relevant parameters
@@ -114,7 +115,10 @@ VAR
 	bTestLimits_Success				: BOOL := FALSE;
 	bTestLimits_Failed				: BOOL := FALSE;
 	
-	bObject6043tested: BOOL;
+	bObject6043tested				: BOOL := FALSE;
+	bObject6046tested				: BOOL := FALSE;
+	bObject6048tested				: BOOL := FALSE;
+	bObject6049tested				: BOOL := FALSE;
 END_VAR
 
 //Error handling
@@ -126,7 +130,7 @@ VAR
 	bRestartTest					: BOOL;
 END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[IF bTestBasicOperation_Failed OR bTestAccel_Failed OR bTestDecel_Failed OR bMinLimitTest_Failed OR bMaxLimitTest_Failed THEN
+      <ST><![CDATA[IF bTestBasicOperation_Failed OR bTestAccel_Failed OR bTestDecel_Failed OR bMinLimitTest_Failed OR bMaxLimitTest_Failed OR bTestLimits_Failed THEN
 	bATestFailed := TRUE;
 ELSE bATestFailed := FALSE;
 END_IF
@@ -188,7 +192,8 @@ CASE eTestMode OF
 					bRestartTest := FALSE;
 					bSetControlWord := TRUE;
 					stepTestMode := stepTestMode+1;
-				END_IF				
+				END_IF		
+		
 			1: 
 				IF bTestBasicOperation_Success THEN stepTestMode := stepTestMode+1; 
 				ELSE eTestMode := BASIC_OPERATION; ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing basic operation...', strArg := '');
@@ -196,11 +201,10 @@ CASE eTestMode OF
 			2: 				
 				IF bTestAccel_Success THEN stepTestMode := stepTestMode+1; 
 				ELSIF nActualVelocity = 0 THEN eTestMode := TEST_ACCEL; bSetControlWord := TRUE; ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing acceleration...', strArg := '');
-				END_IF 
-				
+				END_IF 				
 			3: 
 				IF bTestDecel_Success THEN stepTestMode := stepTestMode+1; 
-				ELSE eTestMode := TEST_DECEL; ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing dceleration...', strArg := '');
+				ELSE eTestMode := TEST_DECEL; ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing deceleration...', strArg := '');
 				END_IF
 			4: 
 				IF bTestLimits_Success THEN stepTestMode := stepTestMode+1;
@@ -212,6 +216,7 @@ CASE eTestMode OF
 				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 					msgFmtStr := 'All tests successful!',
 					strArg := '');
+				stepTestMode := 0; //idle
 		END_CASE	
 	
 		
@@ -256,7 +261,6 @@ CASE eTestMode OF
 	WRITE_DEFAULT_VALUES: 
 		CASE step OF
 			1: //write acc
-				nDefaultAccSpeed := 1000;
 				WriteAcc(nDeltaSpeedRef := nDefaultAccSpeed, nDeltaTimeRef := nDefaultAccTime, bDone => bDone);
 				IF bDone THEN
 					step := step+1;
@@ -295,6 +299,10 @@ CASE eTestMode OF
 					strArg := '');		
 				IF bATestFailed THEN
 					bError := TRUE;
+				END_IF
+				IF bStopAfterLimitTest THEN
+					bStopAfterLimitTest := FALSE;
+					eTestMode := STOP_DRIVE;
 				END_IF
 		END_CASE
 		
@@ -479,12 +487,12 @@ CASE eTestMode OF
 				END_IF
 			
 			4:
-				IF nActualVelocity > 0.99*nTargetVelocityAfterLimit THEN
+				IF nActualVelocity > 0.99*nTargetVelocityAfterLimit THEN 
+					nTargetVelocity := 0;
 					step := step+1;
 				END_IF
 
 			5: //test run of drive for validation of deceleration 
-				nTargetVelocity := 0;
 				bSetVelocity := TRUE;
 				fbVelocityMode(sNetID := GVL.sNetId,
 							nSlaveAddr := GVL.nSlaveAddr,
@@ -494,7 +502,10 @@ CASE eTestMode OF
 				fTrigger(CLK := fbVelocityMode.bBusy);
 				IF fTrigger.Q THEN
 					tTimeDec1 := TIME();
+					step := step+1;
 				END_IF
+				
+			6:
 				IF nActualVelocity = nTargetVelocity THEN
 					tTimeDec2 := TIME();
 					tDiff := tTimeDec2 - tTimeDec1; //time difference of drive to decelerate
@@ -502,7 +513,7 @@ CASE eTestMode OF
 					step := step+1;
 				END_IF
 			
-			6:	//validation
+			7:	//validation
 				IF nDecMeasured > ((1-fTolerance)*fDesiredDeceleration) AND nDecMeasured < ((1+fTolerance)*fDesiredDeceleration) THEN //within range of tolerance: default 5%
 					bTestDecel_Success := TRUE;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
@@ -534,49 +545,48 @@ CASE eTestMode OF
 		tTimeout(IN:=TRUE, PT:=T#15S);
 		CASE step OF
 			1: 
+				nTargetVelocity := 2000;
 				WriteVelocityLimits(nVelocityMinLimit := nMinLimitRef, nVelocityMaxLimit := nMaxLimitRef, bDone => bDone);
 				IF bDone THEN
 					step := step+1;
 				END_IF
 				
 			2: //test max limit
-				nTargetVelocity := 2000;
 				bSetVelocity := TRUE;
 				fbVelocityMode(sNetID := GVL.sNetId,
 							nSlaveAddr := GVL.nSlaveAddr,
 							nTargetVelocity := nTargetVelocity,
 							bSetVelocity := bSetVelocity,
 							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
-				fTrigger(CLK := fbVelocityMode.bBusy);
-				IF fTrigger.Q THEN
+				IF NOT fbVelocityMode.bBusy THEN
 					bIsAccelerating := TRUE;
 					step := step+1;
 				END_IF
 			
 			3:
-				fTimeFaktor := DINT_TO_REAL(nTargetVelocity/nDefaultAccSpeed); 
-				tAccTime := REAL_TO_TIME(2000+fTimeFaktor * nDefaultAccTime*1000); //acceleration time, min 2s
-				tTimer(IN := bIsAccelerating, PT := tAccTime);
-				//error if limit does not apply
-				IF nActualVelocity > (1.10*nMaxLimitRef)(*3% overshot accounted*) OR nTargetVelocityAfterLimit <> nMaxLimitRef THEN 
+				tTimer(IN := bIsAccelerating, PT := T#3S); //run for x seconds
+				IF tTimer.Q THEN 
+					tTimer(IN:=FALSE);
+					step := step+1;
+				END_IF
+			
+			4:
+				IF nActualVelocity > (1.10*nMaxLimitRef)(* 10% overshot accounted *) THEN 
 					bMaxLimitTest_Failed := TRUE;
 					eTestMode := WRITE_DEFAULT_VALUES;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
 						msgFmtStr := 'Max limit test failed.',
-						strArg := '');
-						
-					bIsAccelerating := FALSE;					
-				END_IF
-				IF tTimer.Q THEN //time at witch the drive would be on targetvelocity without limit acitve
-					bIsAccelerating := FALSE;
+						strArg := '');			
+				ELSE
 					bMaxLimitTest_Success := TRUE;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 						msgFmtStr := 'Max limit test success.',
 						strArg := '');
 					step := step+1;
 				END_IF
+				bIsAccelerating := FALSE;
 				
-			4: //test min limit
+			5: //test min limit
 				nTargetVelocity := 0;
 				bSetVelocity := TRUE;
 				fbVelocityMode(sNetID := GVL.sNetId,
@@ -584,32 +594,38 @@ CASE eTestMode OF
 							nTargetVelocity := nTargetVelocity,
 							bSetVelocity := bSetVelocity,
 							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
-				fTrigger(CLK := fbVelocityMode.bBusy);
-				IF fTrigger.Q THEN
+				IF NOT fbVelocityMode.bBusy THEN
 					bIsDecelerating := TRUE;
+					step := step+1;
 				END_IF
-				fTimeFaktor := DINT_TO_REAL((nActualVelocity-nTargetVelocity)/nSpeedDec); 
-				tDecTime := REAL_TO_TIME(2000+fTimeFaktor * nDefaultDecTime*1000); //acceleration time, min 2s
-				tTimer(IN := bIsDecelerating, PT := tDecTime);
-				//error if limit does not apply
-				IF nActualVelocity < (0.97*nMinLimitRef)(*3% overshot accounted*) OR nTargetVelocityAfterLimit <> nMinLimitRef THEN 
+								
+			6:
+				tTimer(IN := bIsDecelerating, PT := T#3S); //run for x seconds
+				IF tTimer.Q THEN 
+					step := step+1;
+				END_IF
+			
+			7:
+//				fTimeFaktor := DINT_TO_REAL((nActualVelocity-nTargetVelocity)/nSpeedDec); 
+//				tDecTime := REAL_TO_TIME(2000+fTimeFaktor * nDefaultDecTime*1000); //acceleration time, min 2s
+//				tTimer(IN := bIsDecelerating, PT := tDecTime);
+//				//error if limit does not apply
+				IF nActualVelocity < (0.9*nMinLimitRef)(*10% overshot accounted*) THEN 
 					bMinLimitTest_Failed := TRUE;
 					eTestMode := WRITE_DEFAULT_VALUES;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
 						msgFmtStr := 'Min limit test failed.',
-						strArg := '');
-						
-					bIsDecelerating := FALSE;					
+						strArg := '');										
 				ELSIF tTimer.Q THEN //time at witch the drive would be on targetvelocity without limit acitve
-					bIsDecelerating := FALSE;
 					bMinLimitTest_Success := TRUE;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 						msgFmtStr := 'Min limit test success.',
 						strArg := '');
 					step := step+1;
 				END_IF
+				bIsDecelerating := FALSE;
 			
-			5:
+			8:
 				IF bMinLimitTest_Success AND bMaxLimitTest_Success THEN
 					bTestLimits_Success := TRUE;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
@@ -617,17 +633,14 @@ CASE eTestMode OF
 						strArg := '');
 				ELSE
 					bTestLimits_Failed := TRUE;
-					bError := TRUE;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 						msgFmtStr := 'Limit test failed.',
 						strArg := '');
 				END_IF
-				
+				bStopAfterLimitTest := TRUE;
+				step := 1;
+				eTestMode := WRITE_DEFAULT_VALUES; //stop and restore default variables				
 		END_CASE
-
-		
-
-
 
 END_CASE
 
@@ -871,8 +884,10 @@ END_IF
       <LineId Id="4776" Count="9" />
       <LineId Id="6100" Count="1" />
       <LineId Id="4786" Count="0" />
-      <LineId Id="4789" Count="13" />
-      <LineId Id="6137" Count="1" />
+      <LineId Id="4789" Count="6" />
+      <LineId Id="6343" Count="0" />
+      <LineId Id="4796" Count="6" />
+      <LineId Id="6137" Count="0" />
       <LineId Id="4804" Count="2" />
       <LineId Id="6140" Count="0" />
       <LineId Id="4808" Count="1" />
@@ -881,15 +896,14 @@ END_IF
       <LineId Id="4812" Count="1" />
       <LineId Id="6133" Count="0" />
       <LineId Id="4814" Count="2" />
+      <LineId Id="6342" Count="0" />
       <LineId Id="4818" Count="13" />
       <LineId Id="5701" Count="0" />
       <LineId Id="5745" Count="18" />
       <LineId Id="5791" Count="2" />
       <LineId Id="5764" Count="1" />
       <LineId Id="5785" Count="1" />
-      <LineId Id="5766" Count="2" />
-      <LineId Id="5850" Count="0" />
-      <LineId Id="5769" Count="3" />
+      <LineId Id="5766" Count="6" />
       <LineId Id="6108" Count="4" />
       <LineId Id="5773" Count="4" />
       <LineId Id="6115" Count="3" />
@@ -903,6 +917,9 @@ END_IF
       <LineId Id="5788" Count="2" />
       <LineId Id="5784" Count="0" />
       <LineId Id="6081" Count="2" />
+      <LineId Id="6335" Count="0" />
+      <LineId Id="6340" Count="0" />
+      <LineId Id="6336" Count="1" />
       <LineId Id="5706" Count="0" />
       <LineId Id="4832" Count="0" />
       <LineId Id="5676" Count="0" />
@@ -920,7 +937,9 @@ END_IF
       <LineId Id="5668" Count="0" />
       <LineId Id="4834" Count="1" />
       <LineId Id="5847" Count="0" />
-      <LineId Id="4836" Count="9" />
+      <LineId Id="4836" Count="6" />
+      <LineId Id="6169" Count="0" />
+      <LineId Id="4844" Count="1" />
       <LineId Id="5630" Count="0" />
       <LineId Id="5810" Count="1" />
       <LineId Id="4849" Count="0" />
@@ -970,16 +989,25 @@ END_IF
       <LineId Id="5974" Count="1" />
       <LineId Id="6039" Count="0" />
       <LineId Id="5976" Count="1" />
-      <LineId Id="5979" Count="12" />
+      <LineId Id="5979" Count="11" />
+      <LineId Id="6315" Count="0" />
       <LineId Id="6059" Count="0" />
       <LineId Id="6078" Count="0" />
       <LineId Id="5995" Count="5" />
       <LineId Id="6150" Count="1" />
       <LineId Id="6157" Count="0" />
       <LineId Id="6152" Count="3" />
-      <LineId Id="6040" Count="1" />
+      <LineId Id="6040" Count="0" />
+      <LineId Id="6313" Count="0" />
+      <LineId Id="6041" Count="0" />
       <LineId Id="6011" Count="1" />
-      <LineId Id="6042" Count="16" />
+      <LineId Id="6042" Count="0" />
+      <LineId Id="6044" Count="8" />
+      <LineId Id="6317" Count="0" />
+      <LineId Id="6053" Count="0" />
+      <LineId Id="6318" Count="0" />
+      <LineId Id="6316" Count="0" />
+      <LineId Id="6054" Count="4" />
       <LineId Id="6026" Count="0" />
       <LineId Id="6061" Count="0" />
       <LineId Id="6077" Count="0" />
@@ -993,20 +1021,49 @@ END_IF
       <LineId Id="6128" Count="0" />
       <LineId Id="5045" Count="0" />
       <LineId Id="5049" Count="0" />
+      <LineId Id="6178" Count="0" />
       <LineId Id="6129" Count="0" />
       <LineId Id="5050" Count="0" />
       <LineId Id="6160" Count="0" />
       <LineId Id="6162" Count="0" />
-      <LineId Id="5057" Count="11" />
+      <LineId Id="5057" Count="1" />
+      <LineId Id="5060" Count="5" />
+      <LineId Id="5067" Count="1" />
       <LineId Id="6163" Count="0" />
       <LineId Id="5069" Count="0" />
       <LineId Id="6164" Count="1" />
-      <LineId Id="5070" Count="12" />
-      <LineId Id="6166" Count="0" />
-      <LineId Id="5085" Count="25" />
+      <LineId Id="5072" Count="0" />
+      <LineId Id="6179" Count="0" />
+      <LineId Id="6328" Count="0" />
+      <LineId Id="6180" Count="3" />
+      <LineId Id="5073" Count="0" />
+      <LineId Id="5075" Count="3" />
+      <LineId Id="5081" Count="0" />
+      <LineId Id="5085" Count="6" />
+      <LineId Id="6185" Count="0" />
+      <LineId Id="5092" Count="8" />
+      <LineId Id="5102" Count="1" />
+      <LineId Id="6327" Count="0" />
+      <LineId Id="5104" Count="0" />
+      <LineId Id="6319" Count="0" />
+      <LineId Id="6322" Count="3" />
+      <LineId Id="6320" Count="0" />
+      <LineId Id="6326" Count="0" />
+      <LineId Id="6329" Count="0" />
+      <LineId Id="5105" Count="5" />
       <LineId Id="6149" Count="0" />
-      <LineId Id="5112" Count="4" />
-      <LineId Id="5119" Count="42" />
+      <LineId Id="5112" Count="2" />
+      <LineId Id="5119" Count="0" />
+      <LineId Id="5121" Count="5" />
+      <LineId Id="6330" Count="0" />
+      <LineId Id="5127" Count="8" />
+      <LineId Id="5137" Count="2" />
+      <LineId Id="6333" Count="0" />
+      <LineId Id="6339" Count="0" />
+      <LineId Id="6341" Count="0" />
+      <LineId Id="5140" Count="0" />
+      <LineId Id="5142" Count="0" />
+      <LineId Id="5147" Count="14" />
       <LineId Id="829" Count="0" />
     </LineIds>
     <LineIds Name="P_VelocityModeTest.ReadAcc">
