@@ -36,6 +36,7 @@ VAR
 	
 	bTest								: BOOL;
 	bAusprobieren						: BOOL;
+	C: INT;
 END_VAR
 
 VAR
@@ -68,7 +69,7 @@ VAR
 	fbSetPositioningOptionCode			: FB_EcCoeSdoWrite;
 	bTestRelativePositioning			: BOOL;
 	bRelativePositioning				: BOOL := TRUE;
-	bTestRelativePositioningFinished		: BOOL;
+	bTestRelativePositioningFinished	: BOOL;
 	bRelativePositioningFinished		: BOOL;
 	nPositioningOptionCode				: DINT;
 	nCounter							: DINT;
@@ -81,14 +82,65 @@ VAR
 											PROFILE_DECELERATION, MOTION_PROFILE_TYPE, MAX_ACCELERATION, MAX_DECELERATION);
 	ePositionRangeLimitState			: (GET_CURRENT_POSITION_RANGE_LIMIT, SET_POSITION_RANGE_LIMIT, 
 											TEST_POSITION_LIMIT, RESET_POSITION_RANGE_LIMIT); 
-	eSoftwarePositionLimitState			: (GET_CURRENT_SOFTWARE_LIMITS, SET_SOFTWARE_LIMITS, 
-											TEST_SOFTWARE_LIMITS, RESET_SOFTWARE_LIMITS);
+	eSoftwarePositionLimitState			: (GET_CURRENT_SOFTWARE_LIMITS, SET_SOFTWARE_LIMITS, TEST_MIN_SOFTWARE_LIMIT, 
+											TEST_MAX_SOFTWARE_LIMIT, RESET_SOFTWARE_LIMITS);
+	eMaxProfileVelocityState			: (GET_CURRENT_VELOCITY_VALUES, SET_MAX_PROFILE_VELOCITY, 
+											TEST_MAX_PROFILE_VELOCITY, RESET_MAX_PROFILE_VELOCITY);
+	eMaxMotorSpeedState					: (GET_CURRENT_VELOCITY_VALUES, SET_MAX_MOTOR_VELOCITY,
+											TEST_MAX_MOTOR_VELOCITY, RESET_MAX_MOTOR_VELOCITY);
+	eProfileVelocityState				: (GET_CURRENT_PROFILE_VELOCITY, TEST_CURRENT_PROFILE_VELOCITY,
+											CHANGE_PROFILE_VELOCITY, TEST_NEW_PROFILE_VELOCITY,
+											RESET_PROFILE_VELOCITY);
+	eEndVelocityState					: (SET_END_VELOCITY, TEST_END_VELOCITY, RESET_END_VELOCITY);
+	eAccelerationState					: (SET_MAX_ACCELERATION, CALCULATION, TEST_MAX_ACCELERATION,
+											TEST_ACCELERATION_AND_DECELERATION, RESET_MAX_ACCELERATION, 
+											RESET_ACCELERATION_AND_DECELERATION);
 	nMinPositionRangeLimit				: DINT;
 	nMaxPositionRangeLimit				: DINT;
 	nMinPositionRangeLimitTest			: DINT;
 	nMaxPositionRangeLimitTest			: DINT;
+	nMinSoftwarePositionLimit			: DINT;
+	nMaxSoftwarePositionLimit			: DINT;
+	nMinSoftwarePositionLimitTest		: DINT;
+	nMaxSoftwarePositionLimitTest		: DINT;
+	nMaxProfileVelocity					: DINT;
+	nMaxProfileVelocityTest				: DINT;
+	nProfileVelocity					: DINT;
+	nCurrentVelocity					: DINT;
+	nMaxMotorVelocity					: DINT;
+	nMaxMotorVelocityTest				: DINT;
+	nAcceleration						: DINT;
+	nDeceleration						: DINT;
+	nAccelerationDuration				: DINT;
+	nDecelerationDuration				: DINT;
+	nCurrentVelocityBuffer				: DINT;
+	nCurrentVelocityBufferCounter		: DINT;
+	nProfileVelocityBuffer				: DINT;
+	nEndVelocity						: DINT;
+	nMaxAcceleration					: DINT;
+	nMaxAccelerationBuffer				: DINT;
+	nMaxDecelerationBuffer				: DINT;
+	nMaxDeceleration					: DINT;
+	nMeanValueVelocity					: REAL;
 	bGetPositionRangeLimit				: BOOL;
 	bSetPositionRangeLimit				: BOOL;
+	bGetSoftwarePositionLimit			: BOOL;
+	bSetSoftwarePositionLimit			: BOOL;
+	bGetProfileVelocity					: BOOL;
+	bGetMaxProfileVelocity				: BOOL;
+	bSetMaxProfileVelocity				: BOOL;
+	bGetCurrentVelocity					: BOOL;
+	bGetMaxMotorSpeed					: BOOL;
+	bSetMaxMotorVelocity				: BOOL;
+	bGetAccelerationAndDeceleration		: BOOL;
+	bWaitForAccelerationFinished		: BOOL;
+	bSetProfileVelocity					: BOOL;
+	bSetEndVelocity						: BOOL;
+	bSetMaxAcceleration					: BOOL;
+	bGetMaxAcceleration					: BOOL;
+	bSetMaxDeceleration					: BOOL;
+	bGetMaxDeceleration					: BOOL;
+	
 	bPositionRangeLimit					: BOOL;
 	bSoftwarePositionLimit				: BOOL;
 	bMaxProfileVelocity					: BOOL;
@@ -100,23 +152,69 @@ VAR
 	bMotionProfileType					: BOOL;
 	bMaxAcceleration					: BOOL;
 	bMaxDeceleration					: BOOL;
+	bStartDeceleration					: BOOL;
+	
+	tAccelerationTime					: TIME;
+	tDecelerationTime					: TIME;
 	fbSetMinPositionRangeLimit			: FB_EcCoeSdoWrite;
 	fbSetMaxPositionRangeLimit			: FB_EcCoeSdoWrite;
-	fbGetMinSoftwarePositionRangeLimit	: FB_EcCoeSdoRead;
-	fbGetMaxSoftwarePositionRangeLimit	: FB_EcCoeSdoRead;
-	ftGetSoftwarePositionRangeLimit		: F_TRIG;
+	fbSetMinSoftwarePositionLimit		: FB_EcCoeSdoWrite;
+	fbSetMaxSoftwarePositionLimit		: FB_EcCoeSdoWrite;
+	fbSetMaxProfileVelocity				: FB_EcCoeSdoWrite;
+	fbSetMaxMotorVelocity				: FB_EcCoeSdoWrite;
+	fbSetProfileVelocity				: FB_EcCoeSdoWrite;
+	fbSetEndVelocity					: FB_EcCoeSdoWrite;
+	fbSetMaxAcceleration				: FB_EcCoeSdoWrite;
+	fbSetMaxDeceleration				: FB_EcCoeSdoWrite;
+	fbGetMinSoftwarePositionLimit		: FB_EcCoeSdoRead;
+	fbGetMaxSoftwarePositionLimit		: FB_EcCoeSdoRead;
+	fbGetProfileVelocity				: FB_EcCoeSdoRead;
+	fbGetMaxProfileVelocity				: FB_EcCoeSdoRead;
+	fbGetCurrentVelocity				: FB_EcCoeSdoRead;
+	fbGetMaxMotorSpeed					: FB_EcCoeSdoRead;
+	fbGetAcceleration					: FB_EcCoeSdoRead;
+	fbGetDeceleration					: FB_EcCoeSdoRead;
+	fbGetMaxAcceleration				: FB_EcCoeSdoRead;	
+	fbGetMaxDeceleration				: FB_EcCoeSdoRead;
+	ftGetSoftwarePositionLimit			: F_TRIG;
+	ftSetSoftwarePositionLimit			: F_TRIG;
 	ftSetPositionRangeLimit				: F_TRIG;
+	ftGetProfileVelocity				: F_TRIG;
+	ftSetMaxProfileVelocity				: F_TRIG;
+	ftSetMaxMotorVelocity				: F_TRIG;
+	ftGetDeceleration					: F_TRIG;
+	ftSetProfileVelocity				: F_TRIG;
+	ftSetEndVelocity					: F_TRIG;
+	ftGetMaxAcceleration				: F_TRIG;
+	ftSetMaxAcceleration				: F_TRIG;
+	tGetCurrentVelocity					: TON;
+	tWaitForAccelerationFinished		: TON;
+	tStartDeceleration					: TON;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[tGetCurrentPosition(IN := bGetCurrentPosition,
 							PT := T#10MS);
+tWaitForAccelerationFinished(IN := bWaitForAccelerationFinished,
+								PT := tAccelerationTime);
+tStartDeceleration(IN := bStartDeceleration,
+					PT := tDecelerationTime);
+							
 
 ftGetStatusword(CLK := fbGetStatusword.bBusy);
 ftGetPositionDemandValue(CLK := fbGetPositionDemandValue.bBusy);
 ftGetPositionRangeLimit(CLK := fbGetMaxPositionRangeLimit.bBusy);
+ftSetPositionRangeLimit(CLK := fbSetMaxPositionRangeLimit.bBusy);
 ftSetPositioningOptionCode(CLK := fbSetPositioningOptionCode.bBusy);
-
-//TODO Position Range Limit		
+ftGetSoftwarePositionLimit(CLK := fbGetMaxSoftwarePositionLimit.bBusy);
+ftSetSoftwarePositionLimit(CLK := fbSetMaxSoftwarePositionLimit.bBusy);
+ftGetProfileVelocity(CLK := fbGetProfileVelocity.bBusy);
+ftSetMaxProfileVelocity(CLK := fbSetMaxProfileVelocity.bBusy);
+ftSetMaxMotorVelocity(CLK := fbSetMaxMotorVelocity.bBusy);
+ftGetDeceleration(CLK := fbGetDeceleration.bBusy);
+ftSetProfileVelocity(CLK := fbSetProfileVelocity.bBusy);
+ftSetEndVelocity(CLK := fbSetEndVelocity.bBusy);
+ftSetMaxAcceleration(CLK := fbSetMaxAcceleration.bBusy);
+ftGetMaxAcceleration(CLK := fbGetMaxAcceleration.bBusy);
 							
 IF tGetCurrentPosition.Q THEN
 	bGetCurrentPosition := FALSE;
@@ -169,6 +267,77 @@ fbGetMaxPositionRangeLimit(sNetId := GVL.sNetId,
 							pDstBuf := ADR(nMaxPositionRangeLimit),
 							cbBufLen := SIZEOF(nMaxPositionRangeLimit),
 							bExecute := bPositionRangeLimit);
+fbGetMinSoftwarePositionLimit(sNetId := GVL.sNetId,
+								nSlaveAddr := GVL.nSlaveAddr,
+								nSubindex := 1,
+								nIndex := 16#607D,
+								pDstBuf := ADR(nMinSoftwarePositionLimit),
+								cbBufLen := SIZEOF(nMinSoftwarePositionLimit),
+								bExecute := bGetSoftwarePositionLimit);			
+fbGetMaxSoftwarePositionLimit(sNetId := GVL.sNetId,
+								nSlaveAddr := GVL.nSlaveAddr,
+								nSubindex := 2,
+								nIndex := 16#607D,
+								pDstBuf := ADR(nMaxSoftwarePositionLimit),
+								cbBufLen := SIZEOF(nMaxSoftwarePositionLimit),
+								bExecute := bGetSoftwarePositionLimit);
+fbGetMaxProfileVelocity(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubindex := 0,
+						nIndex := 16#607F,
+						pDstBuf := ADR(nMaxProfileVelocity),
+						cbBufLen := SIZEOF(nMaxProfileVelocity),
+						bExecute := bGetMaxProfileVelocity);
+fbGetProfileVelocity(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubindex := 0,
+						nIndex := 16#6081,
+						pDstBuf := ADR(nProfileVelocity),
+						cbBufLen := SIZEOF(nProfileVelocity),
+						bExecute := bGetProfileVelocity);
+fbGetCurrentVelocity(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubindex := 0,
+						nIndex := 16#606C,
+						pDstBuf := ADR(nCurrentVelocity),
+						cbBufLen := SIZEOF(nCurrentVelocity),
+						bExecute := bGetCurrentVelocity);	
+fbGetMaxMotorSpeed(sNetId := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nSubIndex := 0,
+					nIndex := 16#6080,
+					pDstBuf := ADR(nMaxMotorVelocity),
+					cbBufLen := SIZEOF(nMaxMotorVelocity),
+					bExecute := bGetMaxMotorSpeed);
+fbGetAcceleration(sNetId := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nSubIndex := 0,
+					nIndex := 16#6083,
+					pDstBuf := ADR(nAcceleration),
+					cbBufLen := SIZEOF(nAcceleration),
+					bExecute := bGetAccelerationAndDeceleration);
+fbGetDeceleration(sNetId := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nSubindex := 0,
+					nIndex := 16#6084,
+					pDstBuf := ADR(nDeceleration),
+					cbBufLen := SIZEOF(nDeceleration),
+					bExecute := bGetAccelerationAndDeceleration);
+fbGetMaxAcceleration(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubindex := 0,
+						nIndex := 16#60C5,
+						pDstBuf := ADR(nMaxAccelerationBuffer),
+						cbBufLen := SIZEOF(nMaxAccelerationBuffer),
+						bExecute := bGetMaxAcceleration);
+fbGetMaxDeceleration(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubindex := 0,
+						nIndex := 16#60C6,
+						pDstBuf := ADR(nMaxDecelerationBuffer),
+						cbBufLen := SIZEOF(nMaxDecelerationBuffer),
+						bExecute := bGetMaxDeceleration);
+					
 							
 fbSetPositioningOptionCode(sNetId := GVL.sNetId,
 							nSlaveAddr := GVL.nSlaveAddr,
@@ -191,8 +360,64 @@ fbSetMaxPositionRangeLimit(sNetID := GVL.sNetId,
 							pSrcBuf := ADR(nMaxPositionRangeLimitTest),
 							cbBufLen := SIZEOF(nMaxPositionRangeLimitTest),
 							bExecute := bSetPositionRangeLimit);
+fbSetMinSoftwarePositionLimit(sNetId := GVL.sNetId,
+								nSlaveAddr := GVL.nSlaveAddr,
+								nIndex := 16#607D,
+								nSubindex := 1,
+								pSrcBuf := ADR(nMinSoftwarePositionLimitTest),
+								cbBufLen := SIZEOF(nMinSoftwarePositionLimitTest),
+								bExecute := bSetSoftwarePositionLimit);
+fbSetMaxSoftwarePositionLimit(sNetId := GVL.sNetId,
+								nSlaveAddr := GVL.nSlaveAddr,
+								nIndex := 16#607D,
+								nSubindex := 2,
+								pSrcBuf := ADR(nMaxSoftwarePositionLimitTest),
+								cbBufLen := SIZEOF(nMaxSoftwarePositionLimitTest),
+								bExecute := bSetSoftwarePositionLimit);
+fbSetMaxProfileVelocity(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubindex := 0,
+						nIndex := 16#607F,
+						pSrcBuf := ADR(nMaxProfileVelocity),
+						cbBufLen := SIZEOF(nMaxProfileVelocity),
+						bExecute := bSetMaxProfileVelocity);
+fbSetMaxMotorVelocity(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubindex := 0,
+						nIndex := 16#6080,
+						pSrcBuf := ADR(nMaxMotorVelocity),
+						cbBufLen := SIZEOF(nMaxMotorVelocity),
+						bExecute := bSetMaxMotorVelocity);
+fbSetProfileVelocity(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubIndex := 0,
+						nIndex := 16#6081,
+						pSrcBuf := ADR(nProfileVelocity),
+						cbBufLen := SIZEOF(nProfileVelocity),
+						bExecute := bSetProfileVelocity);
+fbSetEndVelocity(sNetId := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nSubIndex := 0,
+					nIndex := 16#6082,
+					nSubIndex := 0,
+					pSrcBuf := ADR(nEndVelocity),
+					cbBufLen := SIZEOF(nEndVelocity),
+					bExecute := bSetEndVelocity);
+fbSetMaxAcceleration(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubIndex := 0,
+						nIndex := 16#60C5,
+						pSrcBuf := ADR(nMaxAcceleration),
+						cbBufLen := SIZEOF(nMaxAcceleration),
+						bExecute := bSetMaxAcceleration);
+fbSetMaxDeceleration(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nSubIndex := 0,
+						nIndex := 16#60C6,
+						pSrcBuf := ADR(nMaxDeceleration),
+						cbBufLen := SIZEOF(nMaxDeceleration),
+						bExecute := bSetMaxDeceleration);
 							
-//TODO Position Range Limit
 bGetParameters := TRUE;
 
 IF bStartBasicOperationAbs THEN					
@@ -393,31 +618,340 @@ IF bTestSupportedPPObjects AND bTestRelativePositioningFinished THEN
 
 		//607D Software position limit
 		SOFTWARE_POSITION_LIMIT:
+			CASE eSoftwarePositionLimitState OF
+				GET_CURRENT_SOFTWARE_LIMITS:
+					ePositionRangeLimitState := GET_CURRENT_POSITION_RANGE_LIMIT;
+					bGetSoftwarePositionLimit := TRUE;
+					IF ftGetSoftwarePositionLimit.Q THEN
+						bGetSoftwarePositionLimit := FALSE;
+						eSoftwarePositionLimitState := SET_SOFTWARE_LIMITS;
+					END_IF
+					
+				SET_SOFTWARE_LIMITS:
+					nMinSoftwarePositionLimitTest := nCurrentPosition - 5000000;
+					nMaxSoftwarePositionLimitTest := nCurrentPosition + 5000000;
+					bSetSoftwarePositionLimit := TRUE;
+					IF ftSetSoftwarePositionLimit.Q THEN
+						bSetSoftwarePositionLimit := FALSE;
+						nTargetPosition := -5000000*2;
+						eSoftwarePositionLimitState := TEST_MIN_SOFTWARE_LIMIT;
+					END_IF
+					
+				TEST_MIN_SOFTWARE_LIMIT:
+					//TODO testen, was er wirklich macht. Ist ein Neustart notwendig?
+					bGetStatusword := TRUE;
+					IF ftGetStatusword.Q THEN
+						IF NOT nStatusword.10 THEN
+							bGetStatusword := FALSE;
+						ELSIF (nCurrentPosition >=  (nMinSoftwarePositionLimitTest - nPositionWindow)
+							AND nCurrentPosition <= (nMinSoftwarePositionLimitTest + nPositionWindow)) 
+							AND fbMoveInProfilePosition.bStartPositioning THEN
+							bSoftwarePositionLimit := TRUE;
+							nTargetPosition := nCurrentPosition + 5000000*4; 
+							eSoftwarePositionLimitState := TEST_MAX_SOFTWARE_LIMIT;
+						ELSIF fbMoveInProfilePosition.bStartPositioning THEN
+							bSoftwarePositionLimit := FALSE;
+							ePositionRangeLimitState := RESET_SOFTWARE_LIMITS;
+						END_IF
+						bGetStatusword := FALSE;
+					END_IF
+				
+				TEST_MAX_SOFTWARE_LIMIT:
+					//TODO testen was er wirklich macht. Ist ein Neustart notwendig?
+					bGetStatusword := TRUE;
+					IF ftGetStatusword.Q THEN
+						IF NOT nStatusword.10 THEN
+							bGetStatusword := FALSE;
+						ELSIF (nCurrentPosition >=  (nMaxSoftwarePositionLimitTest - nPositionWindow)
+							AND nCurrentPosition <= (nMaxSoftwarePositionLimitTest + nPositionWindow)) 
+							AND fbMoveInProfilePosition.bStartPositioning THEN
+							bSoftwarePositionLimit := TRUE;
+							nTargetPosition := nCurrentPosition + 5000000*4; 
+							eSoftwarePositionLimitState := RESET_SOFTWARE_LIMITS;
+						ELSIF fbMoveInProfilePosition.bStartPositioning THEN
+							bSoftwarePositionLimit := FALSE;
+							ePositionRangeLimitState := RESET_SOFTWARE_LIMITS;
+						END_IF
+						bGetStatusword := FALSE;
+					END_IF
+				
+				RESET_SOFTWARE_LIMITS:
+					nMinSoftwarePositionLimitTest := nMinSoftwarePositionLimit;
+					nMaxSoftwarePositionLimitTest := nMaxSoftwarePositionLimit;
+					bSetSoftwarePositionLimit := TRUE;
+					IF ftSetSoftwarePositionLimit.Q THEN
+						bSetSoftwarePositionLimit := FALSE;
+						eTestSupportedPPObjects := MAX_PROFILE_VELOCITY;
+					END_IF
+				END_CASE
+
+		//607F Max profile velocity
+	MAX_PROFILE_VELOCITY:
+		CASE eMaxProfileVelocityState OF
+			GET_CURRENT_VELOCITY_VALUES:
+				bGetMaxProfileVelocity := TRUE;
+				bGetProfileVelocity := TRUE;
+				IF ftGetProfileVelocity.Q THEN
+					bGetMaxProfileVelocity := FALSE;
+					bGetProfileVelocity := FALSE;
+					eMaxProfileVelocityState := SET_MAX_PROFILE_VELOCITY;
+				END_IF
+				
+			SET_MAX_PROFILE_VELOCITY:
+				nMaxProfileVelocityTest := nProfileVelocity/2;
+				bSetMaxProfileVelocity := TRUE;
+				IF ftSetMaxProfileVelocity.Q THEN
+					bSetMaxProfileVelocity := FALSE;
+					nTargetPosition := 5000000*2;
+					bMaxProfileVelocity := TRUE;
+					eMaxProfileVelocityState := TEST_MAX_PROFILE_VELOCITY;
+				END_IF
 			
-				ePositionRangeLimitState := GET_CURRENT_POSITION_RANGE_LIMIT;
+			TEST_MAX_PROFILE_VELOCITY:
+				IF tGetCurrentVelocity.Q THEN
+					bGetCurrentVelocity := FALSE;
+				ELSE
+					bGetCurrentVelocity := TRUE;		
+				END_IF
+				IF NOT nStatusword.10 THEN
+					bGetStatusword := FALSE;
+					IF (nCurrentVelocity <= nMaxProfileVelocity) AND NOT
+						bMaxProfileVelocity THEN
+						bMaxProfileVelocity := TRUE;
+					END_IF
+				ELSE
+					eMaxProfileVelocityState := RESET_MAX_PROFILE_VELOCITY;
+				END_IF
 			
+			RESET_MAX_PROFILE_VELOCITY:
+				nMaxProfileVelocityTest := nMaxProfileVelocity;
+				bSetMaxProfileVelocity := TRUE;
+				IF ftSetMaxProfileVelocity.Q THEN
+					bSetMaxProfileVelocity := FALSE;
+					eTestSupportedPPObjects := MAX_MOTOR_SPEED;
+				END_IF
+		END_CASE
+		
+		//6080 Max motor speed
+		MAX_MOTOR_SPEED:
+			CASE eMaxMotorSpeedState OF
+				GET_CURRENT_VELOCITY_VALUES:
+					bGetMaxMotorSpeed := TRUE;
+					bGetProfileVelocity := TRUE;
+					IF ftGetProfileVelocity.Q THEN
+						bGetMaxMotorSpeed := FALSE;
+						bGetProfileVelocity := FALSE;
+						eMaxMotorSpeedState := SET_MAX_MOTOR_VELOCITY;
+					END_IF
+				
+				SET_MAX_MOTOR_VELOCITY:
+					nMaxMotorVelocityTest := nProfileVelocity/2;
+					bSetMaxMotorVelocity := TRUE;
+					IF ftSetMaxMotorVelocity.Q THEN
+						bSetMaxMotorVelocity := FALSE;
+						nTargetPosition := 5000000*2;
+						bMaxMotorSpeed := TRUE;
+						eMaxProfileVelocityState := TEST_MAX_MOTOR_VELOCITY;
+					END_IF
 			
+				TEST_MAX_MOTOR_VELOCITY:
+					eMaxMotorSpeedState := GET_CURRENT_VELOCITY_VALUES;
+					IF tGetCurrentVelocity.Q THEN
+						bGetCurrentVelocity := FALSE;
+					ELSE
+						bGetCurrentVelocity := TRUE;		
+					END_IF
+					bGetStatusword := TRUE;
+					IF NOT nStatusword.10 THEN
+						bGetStatusword := FALSE;
+						IF (nCurrentVelocity <= nMaxMotorVelocity) AND NOT
+							bMaxMotorSpeed THEN
+							bMaxMotorSpeed := TRUE;
+						END_IF
+					ELSE
+						eMaxMotorSpeedState := RESET_MAX_MOTOR_VELOCITY;
+					END_IF
+			
+				RESET_MAX_MOTOR_VELOCITY:
+					nMaxMotorVelocityTest := nMaxMotorVelocity;
+					bSetMaxMotorVelocity := TRUE;
+					IF ftSetMaxMotorVelocity.Q THEN
+						bSetMaxMotorVelocity := FALSE;
+						eTestSupportedPPObjects := PROFILE_VELOCITY;
+					END_IF
+			END_CASE 
+		
+		//6081 Profile velocity
+		PROFILE_VELOCITY:
+			CASE eProfileVelocityState OF
+				GET_CURRENT_PROFILE_VELOCITY:
+					eMaxMotorSpeedState := GET_CURRENT_VELOCITY_VALUES; 
+					//Wie lange brauchen wir um auf die Geschwindigkeit zu kommen?
+					//Timer starten, nach dem Timer Datenerfassung starten
+					//Zweiten Timer Starten, Während der dem die Datenerfassung läuft
+					//Mittelwert berechnen
+					bGetAccelerationAndDeceleration := TRUE;
+					IF ftGetDeceleration.Q THEN
+						bGetAccelerationAndDeceleration := FALSE;
+					END_IF
+					bGetProfileVelocity := TRUE;
+					IF ftGetProfileVelocity.Q THEN
+						bGetProfileVelocity := FALSE;
+						nProfileVelocityBuffer := nProfileVelocity;
+						//Calculation of Time necessary for acceleration and deceleration
+						IF nAcceleration <> 0 THEN
+							nAccelerationDuration :=  REAL_TO_DINT(nProfileVelocity/nAcceleration)*1000;
+							tAccelerationTime := DINT_TO_TIME(nAccelerationDuration);
+						END_IF
+						IF nDeceleration <> 0 THEN
+							nDecelerationDuration := REAL_TO_DINT(nProfileVelocity/nDeceleration)*1000;
+							tDecelerationTime := DINT_TO_TIME(nDecelerationDuration);
+						END_IF
+						nTargetPosition := 5000000*2;
+						eMaxMotorSpeedState := TEST_CURRENT_PROFILE_VELOCITY;
+					END_IF
+					
+				TEST_CURRENT_PROFILE_VELOCITY:
+					bWaitForAccelerationFinished := TRUE;
+					IF tGetCurrentVelocity.Q THEN
+						bGetCurrentVelocity := FALSE;
+					ELSE
+						bGetCurrentVelocity := TRUE;		
+					END_IF
+					//motor has accelerated to end velocity
+					IF tWaitForAccelerationFinished.Q AND NOT tStartDeceleration.Q THEN
+						//Get velocity samples
+						bStartDeceleration := TRUE;
+						nCurrentVelocityBuffer := nCurrentVelocityBuffer + nCurrentVelocity;
+						nCurrentVelocityBufferCounter := nCurrentVelocityBufferCounter + 1;
+					END_IF
+					//calculate mean value of velocity
+					nMeanValueVelocity := nCurrentVelocityBuffer / nCurrentVelocityBufferCounter;
+					bGetStatusword := TRUE;
+					IF NOT nStatusword.10 THEN
+						bGetStatusword := FALSE;
+						IF ((nMeanValueVelocity <= (nProfileVelocity * 1.01)) AND 
+							(nMeanValueVelocity >= (nProfileVelocity * 0.99))) THEN
+							bMaxMotorSpeed := TRUE;
+							bProfileVelocity := TRUE;
+							eProfileVelocityState := CHANGE_PROFILE_VELOCITY;
+						END_IF
+					ELSE
+						bProfileVelocity := FALSE;
+						eProfileVelocityState := RESET_PROFILE_VELOCITY;
+					END_IF
+				
+				CHANGE_PROFILE_VELOCITY:
+					IF nProfileVelocity = nProfileVelocityBuffer/2 THEN
+						eProfileVelocityState := TEST_NEW_PROFILE_VELOCITY;
+					END_IF
+					nProfileVelocity := nProfileVelocity / 2;
+					bSetProfileVelocity := TRUE;
+					IF ftSetProfileVelocity.Q THEN
+						bSetProfileVelocity := FALSE;
+						eProfileVelocityState := TEST_CURRENT_PROFILE_VELOCITY;
+					END_IF
+				
+				RESET_PROFILE_VELOCITY:
+					nProfileVelocity := nProfileVelocityBuffer;
+					bSetProfileVelocity := TRUE;
+					IF ftSetProfileVelocity.Q THEN
+						bSetProfileVelocity := FALSE;
+						eTestSupportedPPObjects := END_VELOCITY;
+					END_IF
+			END_CASE
 
-//607F Max profile velocity
+	//6082 End velocity
+	END_VELOCITY:
+		CASE eEndVelocityState OF
+			SET_END_VELOCITY:
+				nEndVelocity := nProfileVelocity;
+				bSetEndVelocity := TRUE;
+				IF ftSetEndVelocity.Q THEN
+					bSetEndVelocity := FALSE;
+					nTargetPosition := 500000;
+					eEndVelocityState := TEST_END_VELOCITY;
+				END_IF
 
-//6080 Max motor speed
+			TEST_END_VELOCITY:
+				IF tGetCurrentVelocity.Q THEN
+					bGetCurrentVelocity := FALSE;
+				ELSE
+					bGetCurrentVelocity := TRUE;		
+				END_IF
+				bGetStatusword := TRUE;
+				IF NOT nStatusword.10 THEN
+					bGetStatusword := FALSE;
+				ELSE
+					IF nCurrentVelocity <= nEndVelocity * 1.1 AND
+						nCurrentVelocity >= nEndVelocity * 0.9 THEN
+						bEndVelocity := TRUE;
+						eEndVelocityState := RESET_END_VELOCITY;
+					ELSE
+						bEndVelocity := FALSE;
+						eEndVelocityState := RESET_END_VELOCITY;
+					END_IF
+				END_IF
+				
 
-//6081 Profile velocity
-
-//6082 End velocity
-
+			RESET_END_VELOCITY:
+				nEndVelocity := 0;
+				bSetEndVelocity := TRUE;
+				IF ftSetEndVelocity.Q THEN
+					bSetEndVelocity := FALSE;
+					eTestSupportedPPObjects := PROFILE_ACCELERATION;
+				END_IF
+		END_CASE	
+	
 //6083 Profile acceleration
-
 //6084 Profile deceleration 
+//60C5 Max acceleration
+//60C6 Max deceleration
+//normal acceleration has already been tested during test of profile velocity
+//set max acceleration to half of current acceleration
+//Change acceleration and deceleration and measure effects
+//total duration is calculated during test of profile velocity mode
+//Caluclation oof  acceleration/deceleration: a = dv/dt
+//new duration is old duration - 2*a
+//Test Acceleration and Deceleration by setting the values to the values
+//of max acceleration -> total time should be the same
+		CASE eAccelerationState OF
+			SET_MAX_ACCELERATION:
+				eEndVelocityState := SET_END_VELOCITY;
+				bGetMaxDeceleration := TRUE;
+				bGetMaxAcceleration := TRUE;
+				IF ftGetMaxAcceleration.Q THEN
+					bGetMaxDeceleration := FALSE;
+					bGetMaxAcceleration := FALSE;
+					nMaxDeceleration := nDeceleration / 2; 
+					nMaxAcceleration := nAcceleration / 2;
+					IF ftGetMaxAcceleration .Q THEN
+						bSetMaxAcceleration := TRUE;
+						bSetMaxDeceleration := TRUE;
+						IF ftSetMaxAcceleration.CLK THEN
+							eAccelerationState := CALCULATION;
+						END_IF
+					END_IF
+				END_IF	
+			
+			CALCULATION:
+			
+			
+			TEST_MAX_ACCELERATION:
+			
+			TEST_ACCELERATION_AND_DECELERATION:
+			
+			RESET_MAX_ACCELERATION:
+			
+			RESET_ACCELERATION_AND_DECELERATION:
+		END_CASE
+
 
 //6085 Quick stop deceleration
-//-> to be tested during quick stop tests
+// to be tested during quick stop tests
 
 //6086 Motion profile type
 
-//60C5 Max acceleration
-
-//60C6 Max deceleration
 	END_CASE
 END_IF]]></ST>
     </Implementation>
@@ -453,13 +987,26 @@ END_IF]]></ST>
     <LineIds Name="P_ProfilePositionModeTest">
       <LineId Id="93" Count="0" />
       <LineId Id="92" Count="0" />
+      <LineId Id="1933" Count="0" />
+      <LineId Id="1935" Count="0" />
+      <LineId Id="2270" Count="0" />
+      <LineId Id="2274" Count="0" />
+      <LineId Id="2272" Count="0" />
       <LineId Id="753" Count="0" />
       <LineId Id="94" Count="0" />
       <LineId Id="347" Count="0" />
       <LineId Id="1070" Count="0" />
+      <LineId Id="1306" Count="0" />
       <LineId Id="762" Count="0" />
-      <LineId Id="1151" Count="0" />
       <LineId Id="1150" Count="0" />
+      <LineId Id="1308" Count="0" />
+      <LineId Id="1409" Count="0" />
+      <LineId Id="1428" Count="0" />
+      <LineId Id="1551" Count="0" />
+      <LineId Id="1594" Count="0" />
+      <LineId Id="2472" Count="0" />
+      <LineId Id="2518" Count="0" />
+      <LineId Id="3153" Count="1" />
       <LineId Id="754" Count="0" />
       <LineId Id="211" Count="0" />
       <LineId Id="210" Count="0" />
@@ -479,13 +1026,41 @@ END_IF]]></ST>
       <LineId Id="1056" Count="1" />
       <LineId Id="1055" Count="0" />
       <LineId Id="1062" Count="5" />
+      <LineId Id="1266" Count="0" />
+      <LineId Id="1272" Count="5" />
+      <LineId Id="1279" Count="6" />
+      <LineId Id="1393" Count="4" />
+      <LineId Id="1400" Count="2" />
+      <LineId Id="1408" Count="0" />
+      <LineId Id="1403" Count="4" />
+      <LineId Id="1444" Count="4" />
+      <LineId Id="1451" Count="1" />
+      <LineId Id="1531" Count="5" />
+      <LineId Id="1530" Count="0" />
+      <LineId Id="1595" Count="3" />
+      <LineId Id="1602" Count="2" />
+      <LineId Id="1756" Count="6" />
+      <LineId Id="2963" Count="4" />
+      <LineId Id="3151" Count="1" />
+      <LineId Id="3177" Count="6" />
+      <LineId Id="1599" Count="0" />
       <LineId Id="1061" Count="0" />
       <LineId Id="232" Count="2" />
       <LineId Id="238" Count="0" />
       <LineId Id="235" Count="2" />
       <LineId Id="1082" Count="4" />
       <LineId Id="1090" Count="8" />
-      <LineId Id="1152" Count="1" />
+      <LineId Id="1290" Count="0" />
+      <LineId Id="1292" Count="12" />
+      <LineId Id="1291" Count="0" />
+      <LineId Id="1422" Count="5" />
+      <LineId Id="1543" Count="6" />
+      <LineId Id="2464" Count="6" />
+      <LineId Id="2510" Count="7" />
+      <LineId Id="2773" Count="4" />
+      <LineId Id="2961" Count="1" />
+      <LineId Id="3170" Count="6" />
+      <LineId Id="1288" Count="0" />
       <LineId Id="142" Count="0" />
       <LineId Id="173" Count="0" />
       <LineId Id="137" Count="0" />
@@ -622,30 +1197,193 @@ END_IF]]></ST>
       <LineId Id="1043" Count="0" />
       <LineId Id="976" Count="0" />
       <LineId Id="975" Count="0" />
-      <LineId Id="1129" Count="1" />
-      <LineId Id="1142" Count="0" />
+      <LineId Id="1129" Count="0" />
+      <LineId Id="1259" Count="1" />
+      <LineId Id="1262" Count="0" />
+      <LineId Id="1309" Count="1" />
+      <LineId Id="1320" Count="0" />
+      <LineId Id="1311" Count="3" />
+      <LineId Id="1316" Count="3" />
+      <LineId Id="1321" Count="0" />
+      <LineId Id="1332" Count="0" />
+      <LineId Id="1323" Count="0" />
+      <LineId Id="1322" Count="0" />
+      <LineId Id="1324" Count="1" />
+      <LineId Id="1348" Count="0" />
+      <LineId Id="1333" Count="7" />
+      <LineId Id="1347" Count="0" />
+      <LineId Id="1341" Count="5" />
+      <LineId Id="1326" Count="0" />
+      <LineId Id="1331" Count="0" />
+      <LineId Id="1328" Count="0" />
+      <LineId Id="1349" Count="0" />
+      <LineId Id="1351" Count="14" />
+      <LineId Id="1350" Count="0" />
+      <LineId Id="1329" Count="1" />
+      <LineId Id="1367" Count="4" />
+      <LineId Id="1373" Count="0" />
+      <LineId Id="1366" Count="0" />
+      <LineId Id="1261" Count="0" />
       <LineId Id="1141" Count="0" />
-      <LineId Id="1140" Count="0" />
-      <LineId Id="978" Count="0" />
       <LineId Id="977" Count="0" />
       <LineId Id="980" Count="0" />
+      <LineId Id="1471" Count="0" />
+      <LineId Id="1375" Count="0" />
+      <LineId Id="1410" Count="3" />
+      <LineId Id="1415" Count="1" />
+      <LineId Id="1414" Count="0" />
+      <LineId Id="1378" Count="1" />
+      <LineId Id="1421" Count="0" />
+      <LineId Id="1429" Count="2" />
+      <LineId Id="1435" Count="0" />
+      <LineId Id="1461" Count="0" />
+      <LineId Id="1433" Count="0" />
+      <LineId Id="1432" Count="0" />
+      <LineId Id="1380" Count="1" />
+      <LineId Id="1438" Count="0" />
+      <LineId Id="1519" Count="0" />
+      <LineId Id="1440" Count="1" />
+      <LineId Id="1437" Count="0" />
+      <LineId Id="1434" Count="0" />
+      <LineId Id="1453" Count="0" />
+      <LineId Id="1457" Count="0" />
+      <LineId Id="1518" Count="0" />
+      <LineId Id="1458" Count="1" />
+      <LineId Id="1455" Count="1" />
+      <LineId Id="1454" Count="0" />
+      <LineId Id="1384" Count="1" />
+      <LineId Id="1462" Count="3" />
+      <LineId Id="1467" Count="0" />
+      <LineId Id="1466" Count="0" />
+      <LineId Id="1474" Count="0" />
+      <LineId Id="1374" Count="0" />
       <LineId Id="979" Count="0" />
       <LineId Id="982" Count="0" />
+      <LineId Id="1475" Count="20" />
+      <LineId Id="1559" Count="0" />
+      <LineId Id="1496" Count="4" />
+      <LineId Id="2440" Count="0" />
+      <LineId Id="1501" Count="16" />
+      <LineId Id="1470" Count="0" />
       <LineId Id="981" Count="0" />
+      <LineId Id="1557" Count="1" />
       <LineId Id="984" Count="0" />
+      <LineId Id="1562" Count="1" />
+      <LineId Id="1586" Count="3" />
+      <LineId Id="1763" Count="3" />
+      <LineId Id="1572" Count="0" />
+      <LineId Id="1574" Count="1" />
+      <LineId Id="2459" Count="0" />
+      <LineId Id="1923" Count="1" />
+      <LineId Id="1926" Count="0" />
+      <LineId Id="1937" Count="0" />
+      <LineId Id="1927" Count="0" />
+      <LineId Id="1929" Count="1" />
+      <LineId Id="1936" Count="0" />
+      <LineId Id="1931" Count="0" />
+      <LineId Id="1579" Count="0" />
+      <LineId Id="1577" Count="0" />
+      <LineId Id="1576" Count="0" />
+      <LineId Id="1573" Count="0" />
+      <LineId Id="1564" Count="0" />
+      <LineId Id="2099" Count="0" />
+      <LineId Id="1581" Count="3" />
+      <LineId Id="1580" Count="0" />
+      <LineId Id="2101" Count="0" />
+      <LineId Id="2104" Count="0" />
+      <LineId Id="2102" Count="0" />
+      <LineId Id="2436" Count="0" />
+      <LineId Id="2262" Count="0" />
+      <LineId Id="2267" Count="0" />
+      <LineId Id="2103" Count="0" />
+      <LineId Id="1940" Count="0" />
+      <LineId Id="2437" Count="0" />
+      <LineId Id="2442" Count="3" />
+      <LineId Id="2453" Count="0" />
+      <LineId Id="2447" Count="0" />
+      <LineId Id="2454" Count="1" />
+      <LineId Id="2448" Count="1" />
+      <LineId Id="2456" Count="0" />
+      <LineId Id="2450" Count="0" />
+      <LineId Id="2441" Count="0" />
+      <LineId Id="1566" Count="1" />
+      <LineId Id="2477" Count="2" />
+      <LineId Id="2460" Count="1" />
+      <LineId Id="2473" Count="1" />
+      <LineId Id="2476" Count="0" />
+      <LineId Id="2475" Count="0" />
+      <LineId Id="1570" Count="1" />
+      <LineId Id="2483" Count="0" />
+      <LineId Id="2485" Count="0" />
+      <LineId Id="2484" Count="0" />
+      <LineId Id="2487" Count="0" />
+      <LineId Id="2489" Count="0" />
+      <LineId Id="2488" Count="0" />
+      <LineId Id="1561" Count="0" />
+      <LineId Id="2490" Count="0" />
       <LineId Id="983" Count="0" />
       <LineId Id="986" Count="0" />
+      <LineId Id="2491" Count="0" />
+      <LineId Id="2500" Count="1" />
+      <LineId Id="2519" Count="2" />
+      <LineId Id="2538" Count="0" />
+      <LineId Id="2523" Count="0" />
+      <LineId Id="2522" Count="0" />
+      <LineId Id="2503" Count="0" />
+      <LineId Id="2502" Count="0" />
+      <LineId Id="2542" Count="3" />
+      <LineId Id="2541" Count="0" />
+      <LineId Id="2526" Count="2" />
+      <LineId Id="2535" Count="0" />
+      <LineId Id="2547" Count="1" />
+      <LineId Id="2550" Count="0" />
+      <LineId Id="2553" Count="0" />
+      <LineId Id="2551" Count="1" />
+      <LineId Id="2554" Count="0" />
+      <LineId Id="2549" Count="0" />
+      <LineId Id="2525" Count="0" />
+      <LineId Id="2524" Count="0" />
+      <LineId Id="2506" Count="0" />
+      <LineId Id="2505" Count="0" />
+      <LineId Id="2507" Count="1" />
+      <LineId Id="2556" Count="1" />
+      <LineId Id="2559" Count="0" />
+      <LineId Id="2558" Count="0" />
+      <LineId Id="2509" Count="0" />
+      <LineId Id="2498" Count="0" />
       <LineId Id="985" Count="0" />
-      <LineId Id="988" Count="0" />
       <LineId Id="987" Count="0" />
+      <LineId Id="2481" Count="0" />
+      <LineId Id="2480" Count="0" />
+      <LineId Id="2560" Count="0" />
+      <LineId Id="2741" Count="0" />
+      <LineId Id="2734" Count="0" />
+      <LineId Id="2737" Count="2" />
+      <LineId Id="2763" Count="1" />
+      <LineId Id="2742" Count="1" />
+      <LineId Id="3187" Count="0" />
+      <LineId Id="3184" Count="0" />
+      <LineId Id="2745" Count="0" />
+      <LineId Id="3155" Count="1" />
+      <LineId Id="3185" Count="1" />
+      <LineId Id="3158" Count="2" />
+      <LineId Id="3162" Count="0" />
+      <LineId Id="3188" Count="2" />
+      <LineId Id="3161" Count="0" />
+      <LineId Id="3157" Count="0" />
+      <LineId Id="2756" Count="0" />
+      <LineId Id="2746" Count="0" />
+      <LineId Id="3191" Count="0" />
+      <LineId Id="2748" Count="1" />
+      <LineId Id="2752" Count="3" />
+      <LineId Id="2766" Count="1" />
+      <LineId Id="2744" Count="0" />
+      <LineId Id="2736" Count="0" />
       <LineId Id="990" Count="0" />
       <LineId Id="989" Count="0" />
       <LineId Id="991" Count="0" />
       <LineId Id="993" Count="0" />
       <LineId Id="992" Count="0" />
-      <LineId Id="995" Count="0" />
-      <LineId Id="994" Count="0" />
-      <LineId Id="997" Count="0" />
       <LineId Id="996" Count="0" />
       <LineId Id="1019" Count="0" />
       <LineId Id="1014" Count="0" />
