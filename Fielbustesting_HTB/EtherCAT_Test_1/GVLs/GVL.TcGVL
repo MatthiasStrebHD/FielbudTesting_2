@@ -8,6 +8,8 @@ VAR_GLOBAL
 	
 	Controlword AT%Q*		: UINT;	
 	Statusword AT%I*		: UINT;
+	
+	bReset					: BOOL;
 END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>

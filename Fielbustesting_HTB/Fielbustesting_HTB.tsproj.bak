@@ -1792,6 +1792,9 @@ External Setpoint Generation:
 				<EtherCAT/>
 			</Device>
 		</Io>
+		<SymbolWatch>
+			<Variable>TIID^Device 1 (EtherCAT)^Drive 5 (HTB)^Module 1 (csp - axis)^Inputs^Status Word</Variable>
+		</SymbolWatch>
 	</Project>
 	<Mappings>
 		<MappingInfo Identifier="{00000000-2001-0850-0020-500810000403}" Id="#x02030010"/>

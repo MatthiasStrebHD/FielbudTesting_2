@@ -9,8 +9,10 @@ END_VAR
 VAR_OUTPUT
 	Statusword AT%I*		: UINT;
 END_VAR
+
 VAR
 	bStartUpTest			: BOOL;
+	bVelocityModeActive		: BOOL := FALSE;
 END_VAR	
 
 VAR
@@ -20,9 +22,13 @@ VAR
 	bTargetPosition			: BOOL;							//0x607A
 	
 	fbSetToPPMode			: FB_EcCoeSdoWrite;
+	fbSetToVelocityMode		: FB_EcCoeSdoWrite;
 	bSetToPPMode			: BOOL;
+	bSetToVelocityMode		: BOOL := TRUE;
 	tSetToPPMode			: TON;
-	nModeOfOperation		: UDINT := 1;
+	fSetToVelocityMode		: F_TRIG;
+	nModeOfOperation		: UDINT := 2;
+	bBasicTest 				: BOOL := FALSE;
 END_VAR
 
 ]]></Declaration>
@@ -33,7 +39,7 @@ END_VAR
 //	aMOPObjects := aMOPObjects,
 //	sNetID := GVL.sNetId,
 //	nSlaveAddr := GVL.nSlaveAddr);
-
+(*
 fbSetToPPMode(sNetId := GVL.sNetId, 
 				nSlaveAddr := GVL.nSlaveAddr,
 				nIndex := 16#6060,
@@ -45,6 +51,29 @@ tSetToPPMode(IN := bSetToPPMode,
 bSetToPPMode := TRUE;
 IF tSetToPPMode.Q THEN
 	P_ProfilePositionModeTest();	
+END_IF
+*)
+IF bBasicTest THEN
+	BasicTests();
+ELSE
+//TODO read IF velocitymode was set via FB
+fbSetToVelocityMode(sNetId := GVL.sNetId, 
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6060,
+				pSrcBuf := ADR(nModeOfOperation),
+				cbBufLen := SIZEOF (nModeOfOperation),
+				bExecute := bSetToVelocityMode);
+fSetToVelocityMode(CLK := fbSetToVelocityMode.bBusy);
+
+IF fSetToVelocityMode.Q THEN
+	bVelocityModeActive := TRUE;
+	ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Set to velocity mode.',
+				strArg := '');
+END_IF
+IF bVelocityModeActive THEN
+	P_VelocityModeTest();
+END_IF
 END_IF]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
@@ -61,6 +90,13 @@ END_IF]]></ST>
       <LineId Id="72" Count="0" />
       <LineId Id="68" Count="1" />
       <LineId Id="75" Count="1" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="176" Count="0" />
+      <LineId Id="131" Count="0" />
+      <LineId Id="248" Count="0" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="278" Count="16" />
+      <LineId Id="130" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

@@ -41,16 +41,26 @@
     <Compile Include="POUs\P_ProfilePositionModeTest.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="POUs\P_VelocityModeTest.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="POUs\StartUpTests.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\ST_PlcErrorStartUp.TcDUT">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="POUs\VelocityMode\BasicTests.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\VelocityMode\VelocityMode.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="DUTs" />
     <Folder Include="GVLs" />
+    <Folder Include="POUs\VelocityMode" />
     <Folder Include="POUs\ProfilePositionMode" />
     <Folder Include="VISUs" />
     <Folder Include="POUs" />
