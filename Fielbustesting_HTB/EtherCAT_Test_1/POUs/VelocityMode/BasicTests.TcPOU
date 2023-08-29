@@ -52,26 +52,26 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[fbWriteAcc1(sNetId := GVL.sNetId,
-		nSlaveAddr := GVL.nSlaveAddr,
-		nIndex := 16#6048,
-		nSubindex := 1, //delta speed
-		pSrcBuf := ADR(nSpeed),
-		cbBufLen := SIZEOF(nSpeed),
-		bExecute := TRUE);	
+      <ST><![CDATA[//fbWriteAcc1(sNetId := GVL.sNetId,
+//		nSlaveAddr := GVL.nSlaveAddr,
+//		nIndex := 16#6048,
+//		nSubindex := 1, //delta speed
+//		pSrcBuf := ADR(nSpeed),
+//		cbBufLen := SIZEOF(nSpeed),
+//		bExecute := TRUE);	
 			
-fbWriteAcc2(sNetId := GVL.sNetId,
-		nSlaveAddr := GVL.nSlaveAddr,
-		nIndex := 16#6048,
-		nSubindex := 2, //delta time
-		pSrcBuf := ADR(nTime),
-		cbBufLen := SIZEOF(nTime),
-		bExecute := TRUE);
+//fbWriteAcc2(sNetId := GVL.sNetId,
+//		nSlaveAddr := GVL.nSlaveAddr,
+//		nIndex := 16#6048,
+//		nSubindex := 2, //delta time
+//		pSrcBuf := ADR(nTime),
+//		cbBufLen := SIZEOF(nTime),
+//		bExecute := TRUE);
 
-IF NOT fbWriteAcc1.bBusy AND NOT fbWriteAcc2.bBusy THEN
-	fbWriteAcc1(bExecute := FALSE); 
-	fbWriteAcc2(bExecute := FALSE); 
-END_IF
+//IF NOT fbWriteAcc1.bBusy AND NOT fbWriteAcc2.bBusy THEN
+//	fbWriteAcc1(bExecute := FALSE); 
+//	fbWriteAcc2(bExecute := FALSE); 
+//END_IF
 
 
 //CASE step OF
@@ -105,21 +105,21 @@ END_IF
 
 
 
-//fbWriteMax(sNetId := GVL.sNetId,
-//		nSlaveAddr := GVL.nSlaveAddr,
-//		nIndex := 16#6046,
-//		nSubindex := 2, //max
-//		pSrcBuf := ADR(nMax),
-//		cbBufLen := SIZEOF(nMax),
-//		bExecute := TRUE);	
+fbWriteMax(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6046,
+		nSubindex := 2, //max
+		pSrcBuf := ADR(nMax),
+		cbBufLen := SIZEOF(nMax),
+		bExecute := TRUE);	
 			
-//fbWriteMin(sNetId := GVL.sNetId,
-//		nSlaveAddr := GVL.nSlaveAddr,
-//		nIndex := 16#6046,
-//		nSubindex := 1, //min
-//		pSrcBuf := ADR(nMin),
-//		cbBufLen := SIZEOF(nMin),
-//		bExecute := TRUE);
+fbWriteMin(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6046,
+		nSubindex := 1, //min
+		pSrcBuf := ADR(nMin),
+		cbBufLen := SIZEOF(nMin),
+		bExecute := TRUE);
 			]]></ST>
     </Implementation>
     <LineIds Name="BasicTests">
