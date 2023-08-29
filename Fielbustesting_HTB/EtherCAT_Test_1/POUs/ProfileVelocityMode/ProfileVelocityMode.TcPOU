@@ -1,0 +1,270 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="ProfileVelocityMode" Id="{b17f2f52-6edc-45fb-b4a7-aca8666556cc}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK ProfileVelocityMode
+VAR_INPUT
+	sNetID					: T_AmsNetId;
+	nSlaveAddr				: UINT;
+END_VAR
+VAR_OUTPUT
+	bSuccess				: BOOL;
+	bBusy					: BOOL;
+	nTargetVelocityAfterLimit: DINT;
+END_VAR
+VAR_IN_OUT
+	bSetVelocity			: BOOL;
+	nTargetVelocity			: DINT;
+END_VAR
+VAR
+	eMotionState			: (WAIT_FOR_TRIGGER, ENABLE_DEVICE, WAIT_FOR_NEW_VELOCITY, SET_LIMIT, SET_VELOCITY, VALIDATE_VELOCITY, ACKNOWLEDGE_VELOCITY);
+	fbEnableDevice			: FB_EnableDevice;
+	fbSetVelocity			: FB_EcCoeSdoWrite;
+	fbGetStatusword			: FB_EcCoeSdoRead;
+	fbGetVelocityLimitMin	: FB_EcCoeSdoRead;
+	fbGetVelocityLimitMax	: FB_EcCoeSdoRead;
+	fbGetVelocityDemand		: FB_EcCoeSdoRead;
+	tWait					: TON;
+	tWait2					: TON;
+	nStatusword				: UINT;
+	bGetStatusword			: BOOL;
+	bExecuteWait			: BOOL;
+	bWriteToFB				: BOOL;
+	fFlag		 			: F_TRIG;
+	nVelocityBuff			: DINT := 0;
+	nVelocityDemand			: DINT;
+	fbReadVelocityLimits1	: FB_EcCoeSdoRead;
+	fbReadVelocityLimits2	: FB_EcCoeSdoRead;
+	bLimitActive			: BOOL;
+	nVelocityLimitMin		: DINT;
+	nVelocityLimitMax		: DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF GVL.bReset THEN
+	GVL.bReset := FALSE;
+	bSuccess := FALSE;
+	nVelocityBuff := 0;
+	eMotionState := WAIT_FOR_TRIGGER;
+END_IF
+
+ReadLimits();
+bBusy := TRUE; //FB VelocityMode is busy and the target velocity is not jet set
+
+fbSetVelocity(sNetId := sNetID,
+			nSlaveAddr := nSlaveAddr,
+			nSubIndex := 0,
+			nIndex := 16#6042,
+			pSrcBuf := ADR(nVelocityBuff),
+			cbBufLen := SIZEOF(nVelocityBuff),
+			bExecute := bWriteToFB);
+				
+	
+// state machine				
+CASE eMotionState OF
+	WAIT_FOR_TRIGGER:
+		MAIN.Controlword := 0;
+		IF bSetVelocity THEN
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Enable Device',
+				strArg := '');
+			eMotionState := ENABLE_DEVICE;
+		END_IF	
+
+	ENABLE_DEVICE:
+		fbEnableDevice (bTrigger := bSetVelocity,
+						bSuccess => bSuccess,
+						sNetId := sNetId,
+						nSlaveAddr := nSlaveAddr);
+		IF fbEnableDevice.bFinished THEN
+			IF NOT bSuccess THEN
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Device not successfully enabled',
+					strArg := '');
+				eMotionState := WAIT_FOR_TRIGGER;
+			ELSE
+				eMotionState := WAIT_FOR_NEW_VELOCITY; 
+			END_IF
+		END_IF
+		
+		
+	WAIT_FOR_NEW_VELOCITY:
+		IF nTargetVelocity <> nVelocityBuff THEN
+			eMotionState := SET_LIMIT;
+		ELSE
+			bSetVelocity := FALSE;
+			bBusy := FALSE; //FB 
+		END_IF
+		
+	
+	SET_LIMIT:
+		bBusy := TRUE;
+		nVelocityBuff := nTargetVelocity;
+		IF nVelocityBuff < nVelocityLimitMin THEN
+			bLimitActive := TRUE;
+			nVelocityBuff := nVelocityLimitMin;
+			nTargetVelocityAfterLimit := nVelocityLimitMin;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Velocity exceeds limit: Minimum limit was set',
+				strArg := '');
+		ELSIF nVelocityBuff > nVelocityLimitMax THEN
+			bLimitActive := TRUE;
+			nVelocityBuff := nVelocityLimitMax;
+			nTargetVelocityAfterLimit := nVelocityLimitMax;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Velocity exceeds limit: Maximum limit was set',
+				strArg := '');
+		ELSE 
+			bLimitActive := FALSE;
+			nTargetVelocityAfterLimit := nTargetVelocity;
+		END_IF
+		nTargetVelocity := nVelocityBuff;
+		eMotionState := SET_VELOCITY;
+	
+		
+	SET_VELOCITY:
+		//set velocity
+		bWriteToFB := TRUE;
+		fFlag(CLK := fbSetVelocity.bBusy); 		
+		
+		IF fbSetVelocity.bError THEN
+			//Error when setting Target Velocity
+			bSuccess := FALSE;
+			bWriteToFB := FALSE;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Error in set velocity',
+				strArg := '');
+			eMotionState := WAIT_FOR_TRIGGER;
+		END_IF
+		
+		IF fFlag.Q THEN
+			eMotionState := VALIDATE_VELOCITY;
+		END_IF
+		
+		
+	VALIDATE_VELOCITY:
+		bGetStatusword := TRUE;
+		fbGetStatusword(sNetId := sNetId,
+			nSlaveAddr := nSlaveAddr,
+			nIndex := 16#6041,
+			nSubIndex := 0,
+			pDstBuf := ADR(nStatusword),
+			cbBufLen := SIZEOF(nStatusword),
+			bExecute := bGetStatusword);
+		fFlag(CLK := fbGetStatusword.bBusy);
+		IF fFlag.Q THEN
+			IF nStatusword.4 THEN
+//				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+//				msgFmtStr := 'Velocity is valid',
+//				strArg := '');
+			ELSE 
+				bSuccess := FALSE;
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Error when validating velocity. Controlword not set.',
+					strArg := '');
+			END_IF
+			fbGetStatusword(bExecute := FALSE);
+			bSetVelocity := FALSE;
+			bWriteToFB := FALSE;
+			eMotionState := WAIT_FOR_NEW_VELOCITY;
+		END_IF
+		
+END_CASE
+
+]]></ST>
+    </Implementation>
+    <Method Name="ReadLimits" Id="{80a73536-869d-4a7f-93bd-d1c6e544af94}">
+      <Declaration><![CDATA[METHOD ReadLimits : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fbReadVelocityLimits1(nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 1, //v_min
+			pDstBuf := ADR(nVelocityLimitMin),
+			cbBufLen := SIZEOF(nVelocityLimitMin),
+			bExecute := TRUE);
+	
+	fbReadVelocityLimits2(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 2, //v_max
+			pDstBuf := ADR(nVelocityLimitMax),
+			cbBufLen := SIZEOF(nVelocityLimitMax),
+			bExecute := TRUE);
+			
+IF NOT fbReadVelocityLimits1.bBusy AND NOT fbReadVelocityLimits2.bBusy THEN
+	fbReadVelocityLimits1(bExecute := FALSE); 
+	fbReadVelocityLimits2(bExecute := FALSE); 
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="ProfileVelocityMode">
+      <LineId Id="1313" Count="0" />
+      <LineId Id="1587" Count="0" />
+      <LineId Id="1589" Count="0" />
+      <LineId Id="1588" Count="0" />
+      <LineId Id="1583" Count="2" />
+      <LineId Id="1523" Count="0" />
+      <LineId Id="1347" Count="0" />
+      <LineId Id="1421" Count="6" />
+      <LineId Id="1312" Count="0" />
+      <LineId Id="1428" Count="0" />
+      <LineId Id="1586" Count="0" />
+      <LineId Id="1429" Count="0" />
+      <LineId Id="1081" Count="20" />
+      <LineId Id="1105" Count="4" />
+      <LineId Id="1575" Count="0" />
+      <LineId Id="1316" Count="0" />
+      <LineId Id="1328" Count="0" />
+      <LineId Id="1322" Count="0" />
+      <LineId Id="1348" Count="1" />
+      <LineId Id="1352" Count="0" />
+      <LineId Id="1323" Count="0" />
+      <LineId Id="1318" Count="0" />
+      <LineId Id="1321" Count="0" />
+      <LineId Id="1110" Count="0" />
+      <LineId Id="1350" Count="0" />
+      <LineId Id="1325" Count="0" />
+      <LineId Id="1276" Count="0" />
+      <LineId Id="1529" Count="0" />
+      <LineId Id="1131" Count="0" />
+      <LineId Id="1591" Count="0" />
+      <LineId Id="1132" Count="3" />
+      <LineId Id="1530" Count="0" />
+      <LineId Id="1136" Count="0" />
+      <LineId Id="1590" Count="0" />
+      <LineId Id="1137" Count="2" />
+      <LineId Id="1532" Count="0" />
+      <LineId Id="1534" Count="0" />
+      <LineId Id="1592" Count="0" />
+      <LineId Id="1140" Count="0" />
+      <LineId Id="1573" Count="0" />
+      <LineId Id="1141" Count="0" />
+      <LineId Id="1143" Count="0" />
+      <LineId Id="1574" Count="0" />
+      <LineId Id="1144" Count="1" />
+      <LineId Id="1153" Count="0" />
+      <LineId Id="1476" Count="0" />
+      <LineId Id="1486" Count="0" />
+      <LineId Id="1477" Count="7" />
+      <LineId Id="1576" Count="0" />
+      <LineId Id="1579" Count="0" />
+      <LineId Id="1577" Count="1" />
+      <LineId Id="1169" Count="0" />
+      <LineId Id="1487" Count="0" />
+      <LineId Id="1485" Count="0" />
+      <LineId Id="1170" Count="11" />
+      <LineId Id="1183" Count="3" />
+      <LineId Id="1188" Count="4" />
+      <LineId Id="1343" Count="0" />
+      <LineId Id="1315" Count="0" />
+      <LineId Id="1431" Count="0" />
+      <LineId Id="1193" Count="4" />
+      <LineId Id="19" Count="0" />
+    </LineIds>
+    <LineIds Name="ProfileVelocityMode.ReadLimits">
+      <LineId Id="6" Count="17" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

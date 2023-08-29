@@ -1,0 +1,992 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="P_ProfileVelocityModeTest" Id="{32c37c24-beb7-411f-be8e-52b623387b11}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_ProfileVelocityModeTest
+//general handling
+VAR
+	bStartTestOfNewDrive			: BOOL;//starts new test
+	bRestartTest					: BOOL;//restart if single test failed
+	bManuallyRestoreDefaultValues	: BOOL;
+	bError							: BOOL := FALSE;//Error handling
+	bAckError						: BOOL;//Error handling
+	bStopMotor						: BOOL;//Error handling
+END_VAR
+
+//test case success indication variables
+VAR
+	bSingleTestFailed					: BOOL := FALSE;
+	
+	bObject6043tested				: BOOL := FALSE;//test case success indication variables
+	bObject6046tested				: BOOL := FALSE;//test case success indication variables
+	bObject6048tested				: BOOL := FALSE;//test case success indication variables
+	bObject6049tested				: BOOL := FALSE;//test case success indication variables
+	
+	bTestBasicOperation_Success		: BOOL := FALSE;//test case success indication variables
+	bTestAccel_Success				: BOOL := FALSE;//test case success indication variables	
+	bTestDecel_Success				: BOOL := FALSE;//test case success indication variables
+	bTestLimits_Success				: BOOL := FALSE;//test case success indication variables
+	
+	bTestBasicOperation_Failed		: BOOL := FALSE;
+	bTestAccel_Failed				: BOOL := FALSE;
+	bTestDecel_Failed				: BOOL := FALSE;
+	bTestLimits_Failed				: BOOL := FALSE;
+	
+	bMaxLimitTest_Success			: BOOL := FALSE; //helper for limit
+	bMinLimitTest_Success			: BOOL := FALSE; //helper for limit
+	bMaxLimitTest_Failed			: BOOL := FALSE; //helper for limit
+	bMinLimitTest_Failed			: BOOL := FALSE; //helper for limit	
+END_VAR
+
+//relevant parameters for test options
+VAR
+	fToleranceLimit					: REAL := 0.1; // 10% tolerance
+	fToleranceAccDec				: REAL := 0.05; // 5% tolerance
+	fToleranceBasicOp				: REAL := 0.02; // 2% tolerance
+	nDeltaSpeedRef					: DINT := 300; //speed reference for acc/dec
+	nDeltaTimeRef					: DINT := 1; //time reference for acc/dec
+	nMinLimitRef					: DINT := 200; //testing this minimum velocity limit
+	nMaxLimitRef					: DINT := 1000; //testing this maximum velocity limit	
+END_VAR
+
+// default values will be deliberately changed. Persistent variables keep their values also at shutdown of PLC, see https://infosys.beckhoff.com/index.php?content=../content/1031/tc3_plc_intro/2526557579.html&id=
+// pressing "restart in run modus" will NOT clear these values!
+VAR PERSISTENT
+	nDefaultAccSpeed				: DINT;
+	nDefaultDecSpeed				: DINT;
+	nDefaultAccTime					: DINT;
+	nDefaultDecTime					: DINT;
+	nDefaultVelocityMinLimit		: DINT;
+	nDefaultVelocityMaxLimit		: DINT;
+END_VAR
+
+// all variables
+VAR	
+	eTestMode	: (WAIT_FOR_TEST, READ_DEFAULT_VALUES, WRITE_DEFAULT_VALUES, ERROR, STOP_DRIVE, BASIC_OPERATION, TEST_ACCEL, TEST_DECEL, TEST_LIMITS); 
+	step							: INT := 1;
+	stepTestMode					: INT := 0; //start in idle mode
+	
+	bSetControlWord					: BOOL := TRUE;
+	fbVelocityMode					: VelocityMode;
+	fbGetStatusword					: FB_EcCoeSdoRead;
+	fbGetActualVelocity				: FB_EcCoeSdoRead;
+//	fbGetVelocityLimitMax			: FB_EcCoeSdoRead;
+//	fbGetVelocityLimitMin			: FB_EcCoeSdoRead;
+	fbReadVelocityLimits1			: FB_EcCoeSdoRead;
+	fbReadVelocityLimits2			: FB_EcCoeSdoRead;
+	fbWriteVelocityLimits1			: FB_EcCoESdoWrite;
+	fbWriteVelocityLimits2			: FB_EcCoESdoWrite;
+	fbWriteAcc1						: FB_EcCoESdoWrite;
+	fbWriteAcc2						: FB_EcCoESdoWrite;
+	fbReadAcc1						: FB_EcCoeSdoRead;
+	fbReadAcc2						: FB_EcCoeSdoRead;
+	fbWriteDec1						: FB_EcCoESdoWrite;
+	fbWriteDec2						: FB_EcCoESdoWrite;
+	fbReadDec1						: FB_EcCoeSdoRead;
+	fbReadDec2						: FB_EcCoeSdoRead;
+	fbGetVelocityDemand				: FB_EcCoESdoRead;
+	nTargetVelocity					: DINT := 50; //rpm
+	nActualVelocity					: DINT;
+	nStatusword						: UINT;
+	nSpeed							: DINT;
+	nTime							: DINT;
+		
+	bGetCurrentVelocity				: BOOL;
+	bGetStatusword					: BOOL;
+	bSetVelocity					: BOOL; 
+	nTargetVelocityAfterLimit		: DINT;
+	tTimeDec1						: TIME;
+	tTimeDec2						: TIME;
+	nAccMeasured					: REAL;
+	nDecMeasured					: REAL;
+	bIsAccelerating					: BOOL;
+	bIsDecelerating					: BOOL;
+	
+	bDone							: BOOL;
+	nDeltaVelocityTarget			: REAL;
+	fDesiredAcceleration			: REAL;
+	nVelocityDemand					: DINT;
+	nVelocityMinLimit 				: DINT;
+	nVelocityMaxLimit 				: DINT;
+	bWriteDefaultValues				: BOOL;
+	nDecVelocity					: DINT;
+	fDesiredDeceleration			: REAL;
+	bStopAfterLimitTest				: BOOL;
+
+	tTimeout						: TON;
+	tTimer							: TON;
+	tGetStatusword					: TON;
+	tWaitForCurrentVelocity			: TON;
+	tTimeAcc1						: TIME;
+	tTimeAcc2						: TIME;
+	tDiff							: TIME;
+	fTrigger						: F_TRIG;
+	fFlag 							: F_TRIG;	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bTestBasicOperation_Failed OR bTestAccel_Failed OR bTestDecel_Failed OR bMinLimitTest_Failed OR bMaxLimitTest_Failed OR bTestLimits_Failed THEN
+	bSingleTestFailed := TRUE;
+ELSE bSingleTestFailed := FALSE;
+END_IF
+
+
+tWaitForCurrentVelocity(IN := bGetCurrentVelocity,
+							PT := T#10MS);
+tGetStatusword(IN := bGetStatusword,
+					PT := T#500MS);	
+							
+IF tWaitForCurrentVelocity.Q THEN
+	bGetCurrentVelocity := FALSE;
+ELSE
+	bGetCurrentVelocity := TRUE;		
+END_IF
+// read FBs
+fbGetStatusword(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6041,
+				nSubindex := 0,
+				pDstBuf := ADR(nStatusWord),
+				cbBufLen := SIZEOF(nStatusWord),
+				bExecute := bGetStatusword);
+				
+fbGetActualVelocity(sNetId := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nIndex := 16#6044,
+					nSubindex := 0,
+					pDstBuf := ADR(nActualVelocity),
+					cbBufLen := SIZEOF(nActualVelocity),
+					bExecute := bGetCurrentVelocity);
+
+//write to motor
+MAIN.Controlword.4 := bSetControlWord; //velocity demand value shall equal to ramp output value
+MAIN.Controlword.5 := bSetControlWord; //ramp output value shall follow ramp input value
+MAIN.Controlword.6 := bSetControlWord; //ramp input value shall accord with ramp reference
+
+			
+//stop
+IF bStopMotor OR bError THEN
+	MAIN.Controlword := 0;
+	stepTestMode := 0;
+END_IF
+
+
+(*TEST SUITE*)	
+//error detection
+IF bError THEN
+	eTestMode := ERROR;
+END_IF
+// restore stored default values
+IF bManuallyRestoreDefaultValues THEN
+	eTestMode := WRITE_DEFAULT_VALUES;
+END_IF
+
+CASE eTestMode OF
+	WAIT_FOR_TEST:
+		tTimeout(IN := FALSE);
+		step := 1; //resetting general step counter for use within TestModes
+		CASE stepTestMode OF
+			0: //idle
+				IF bRestartTest THEN //restart inside a test procedure
+					GVL.bReset := TRUE;
+					bRestartTest := FALSE; 
+					bSetControlWord := TRUE;
+					bTestBasicOperation_Failed := bTestAccel_Failed := bTestDecel_Failed := bMinLimitTest_Failed := bMaxLimitTest_Failed := bTestLimits_Failed := FALSE;
+					stepTestMode := stepTestMode+1;
+				END_IF
+				IF bStartTestOfNewDrive THEN //start test of a new drive 
+					GVL.bReset := TRUE;
+					Reset();
+					bSetControlWord := TRUE;
+					bStartTestOfNewDrive := FALSE;
+					eTestMode := READ_DEFAULT_VALUES;
+				END_IF
+		
+			1: 
+				IF bTestBasicOperation_Success THEN 
+					stepTestMode := stepTestMode+1; 
+					bObject6043tested := TRUE;
+				ELSE 
+					eTestMode := BASIC_OPERATION; 
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing basic operation...', strArg := '');
+				END_IF 				
+			2: 				
+				IF bTestAccel_Success THEN 
+					stepTestMode := stepTestMode+1; 
+					bObject6046tested := TRUE;
+				ELSIF nActualVelocity = 0 THEN 
+					eTestMode := TEST_ACCEL; 
+					bSetControlWord := TRUE; 
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing acceleration...', strArg := '');
+				END_IF 				
+			3: 
+				IF bTestDecel_Success THEN 
+					stepTestMode := stepTestMode+1; 
+					bObject6048tested := TRUE;
+				ELSE 
+					eTestMode := TEST_DECEL; 
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing deceleration...', strArg := '');
+				END_IF
+			4: 
+				IF bTestLimits_Success THEN 
+					stepTestMode := stepTestMode+1; 
+					bObject6049tested := TRUE;
+				ELSE 
+					eTestMode := TEST_LIMITS; 
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing limits...', strArg := '');
+				END_IF				
+			
+			5: //all tests successful
+				MAIN.Controlword := 0;
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'All tests successful!', strArg := '');
+				stepTestMode := 0; //idle
+		END_CASE	
+	
+		
+	(* Error handling *)
+	ERROR:
+		MAIN.Controlword := 0;
+		bSetControlWord := FALSE;
+		IF bAckError OR bRestartTest THEN
+			bAckError := FALSE;
+			bError := FALSE;
+			
+			eTestMode := WAIT_FOR_TEST;
+			stepTestMode := 0;
+		END_IF
+
+
+	READ_DEFAULT_VALUES: 
+		CASE step OF
+			1: //read acc
+				ReadAcc(nDeltaSpeed := nDefaultAccSpeed, nDeltaTime := nDefaultAccTime, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF
+			2: //read dec
+				ReadDec(nDeltaSpeed := nDefaultDecSpeed, nDeltaTime := nDefaultDecTime, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF				
+			3: //read limits
+				ReadVelocityLimits(nVelocityMinLimit := nDefaultVelocityMinLimit, nVelocityMaxLimit := nDefaultVelocityMaxLimit, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF
+			4: 
+				eTestMode := WAIT_FOR_TEST;			
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Default values read.', strArg := '');
+				stepTestMode := 1; //start test basic operation
+		END_CASE
+		
+		
+	WRITE_DEFAULT_VALUES: 
+		CASE step OF
+			1: //write acc
+				WriteAcc(nDeltaSpeedRef := nDefaultAccSpeed, nDeltaTimeRef := nDefaultAccTime, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF
+			2: 
+				ReadAcc(nDeltaSpeed := nSpeed, nDeltaTime := nTime, bDone => bDone);
+				IF nSpeed = nDefaultAccSpeed AND nTime = nDefaultAccTime AND bDone THEN
+					step := step+1;
+				END_IF
+			3: //write dec
+				WriteDec(nDeltaSpeedRef := nDefaultDecSpeed, nDeltaTimeRef := nDefaultDecTime, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF	
+			4:
+				ReadDec(nDeltaSpeed := nSpeed, nDeltaTime := nTime, bDone => bDone);
+				IF nSpeed = nDefaultDecSpeed AND nTime = nDefaultDecTime AND bDone THEN
+					step := step+1;
+				END_IF
+			
+			5: //write limits
+				WriteVelocityLimits(nVelocityMinLimit := nDefaultVelocityMinLimit, nVelocityMaxLimit := nDefaultVelocityMaxLimit, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF
+			6: 
+				ReadVelocityLimits(nVelocityMinLimit := nVelocityMinLimit, nVelocityMaxLimit := nVelocityMaxLimit, bDone => bDone);
+				IF nVelocityMinLimit = nDefaultVelocityMinLimit AND nVelocityMaxLimit = nDefaultVelocityMaxLimit AND bDone THEN
+					step := step+1;
+				END_IF
+
+			7: 
+				eTestMode := WAIT_FOR_TEST;	
+				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Default values restored. Acc, dec and limits',
+					strArg := '');		
+				IF bSingleTestFailed THEN
+					bError := TRUE;
+				END_IF
+				IF bStopAfterLimitTest THEN
+					bStopAfterLimitTest := FALSE;
+					eTestMode := STOP_DRIVE;
+				END_IF
+				bManuallyRestoreDefaultValues := FALSE;
+		END_CASE
+		
+		
+	STOP_DRIVE:
+		step := 1;
+		nTargetVelocity := 0;
+		bSetVelocity := TRUE;
+		fbVelocityMode(sNetID := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nTargetVelocity := nTargetVelocity,
+					bSetVelocity := bSetVelocity,
+					nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
+		IF nActualVelocity = 0 THEN
+			IF bWriteDefaultValues THEN
+				bWriteDefaultValues := FALSE;
+				eTestMode := WRITE_DEFAULT_VALUES;
+			ELSE
+				eTestMode := WAIT_FOR_TEST;
+			END_IF
+		END_IF
+	
+	(* Test basic operation *)
+	BASIC_OPERATION:
+		tTimeout(IN := TRUE, PT := T#15S);
+		CASE step OF
+		1:	
+			nTargetVelocity := 300; //rpm
+			bSetVelocity := TRUE;
+			fbVelocityMode(sNetID := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nTargetVelocity := nTargetVelocity,
+						bSetVelocity := bSetVelocity,
+						nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
+			IF NOT fbVelocityMode.bBusy THEN //now velocity is set
+				step := step+1;
+			END_IF			
+		2:  
+			tTimer(IN:=TRUE, PT:=T#3S);
+			IF tTimer.Q THEN
+				tTimer(IN:=FALSE);
+				step := step+1;
+			END_IF
+		3:
+			IF  TO_REAL(nActualVelocity) > ((1-fToleranceBasicOp)*TO_REAL(nTargetVelocityAfterLimit)) 
+			AND TO_REAL(nActualVelocity) < ((1+fToleranceBasicOp)*TO_REAL(nTargetVelocityAfterLimit)) THEN // Vsoll = Vist with 2% tolerance
+				fbGetVelocityDemand(sNetId := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nIndex := 16#6043,
+					nSubIndex := 0,
+					pDstBuf := ADR(nVelocityDemand),
+					cbBufLen := SIZEOF(nVelocityDemand),
+					bExecute := TRUE);
+				fFlag(CLK := fbGetVelocityDemand.bBusy);
+				IF fFlag.Q THEN
+					fbGetVelocityDemand(bExecute := FALSE);
+					IF nVelocityDemand = nTargetVelocityAfterLimit THEN
+						bTestBasicOperation_Success := TRUE; //set success indication	
+						step := step+1;								
+						ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+							msgFmtStr := 'Basic operation test success.',
+							strArg := '');
+					END_IF
+				END_IF
+			ELSIF nActualVelocity > 2*nTargetVelocityAfterLimit THEN
+				bError := TRUE;
+				bTestBasicOperation_Failed := TRUE;
+			END_IF
+				
+			
+		4:	//soft stop motor
+			eTestMode := STOP_DRIVE;			
+		END_CASE
+		
+		//Error handling in wait_for_test
+		IF tTimeout.Q THEN
+			bTestBasicOperation_Failed := TRUE;
+			bError := TRUE;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Basic operation test failed. Timeout.',
+				strArg := '');
+		END_IF
+
+	
+	(* Test acceleration target *)
+	TEST_ACCEL:
+		tTimeout(IN := TRUE, PT := T#10S); 
+		CASE step OF
+			1: //set acceleration values
+				WriteAcc(nDeltaSpeedRef := nDeltaSpeedRef, nDeltaTimeRef := nDeltaTimeRef, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF
+				
+			2: //read acceleration
+				ReadAcc(nDeltaSpeed := nSpeed, nDeltaTime := nTime, bDone => bDone); 
+				IF nSpeed = nDeltaSpeedRef AND nTime = nDeltaTimeRef AND bDone THEN //Acceleration values were set correctly
+					step := step+1;
+				END_IF
+				
+			3: //set drive to TargetVelocity and measure acceleration time
+				nTargetVelocity := 2000;
+				nDeltaVelocityTarget := 0.995*TO_REAL(nTargetVelocity); //needs to be a little lower than target due to acc ramping
+				fDesiredAcceleration := TO_REAL(nDeltaSpeedRef/nDeltaTimeRef); // acc reference
+				
+				bSetVelocity := TRUE;
+				fbVelocityMode(sNetID := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nTargetVelocity := nTargetVelocity,
+							bSetVelocity := bSetVelocity,
+							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
+				fTrigger(CLK := fbVelocityMode.bBusy);
+				IF fTrigger.Q THEN
+					tTimeAcc1 := TIME();
+					step := step+1;
+				END_IF
+			
+			4:
+				tTimer(IN:=TRUE, PT:=T#50MS);
+				IF tTimer.Q THEN
+					tTimer(IN:=FALSE);
+					step := step+1;
+				END_IF
+				
+			5:
+				IF TO_REAL(nActualVelocity) >= nDeltaVelocityTarget THEN 
+					tTimeAcc2 := TIME();
+					tDiff := tTimeAcc2 - tTimeAcc1; //time difference of drive to reach nSpeedRef
+					nAccMeasured := TO_REAL(nActualVelocity*1000/TIME_TO_DINT(tDiff)); //time in ms
+					step := step+1;
+				END_IF
+
+			6: //validate result
+				IF  nAccMeasured > ((1-fToleranceAccDec)*fDesiredAcceleration) 
+				AND nAccMeasured < ((1+fToleranceAccDec)*fDesiredAcceleration) THEN //within range of tolerance: default 5%
+					bTestAccel_Success := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Acceleration test success.',
+					strArg := '');
+				ELSE
+					bTestAccel_Failed := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+						msgFmtStr := 'Acceleration test failed. Motor acceleration not within range of reference values.',
+						strArg := '');
+				END_IF
+				bWriteDefaultValues := TRUE;
+				eTestMode := STOP_DRIVE; //stop and restore default variables
+		END_CASE
+		
+		//Error handling timeout
+		IF tTimeout.Q THEN
+			eTestMode := WRITE_DEFAULT_VALUES; //restore default variables
+			bTestAccel_Failed := TRUE;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Acceleration test failed. Timeout.',
+				strArg := '');
+		END_IF
+		
+	
+		
+(* Test acceleration target *)
+	TEST_DECEL:
+		tTimeout(IN := TRUE, PT := T#15S); 
+		CASE step OF
+			1: //set deceleration values
+				WriteDec(nDeltaSpeedRef := nDeltaSpeedRef, nDeltaTimeRef := nDeltaTimeRef, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF
+				
+			2: //read deceleration
+				ReadDec(nDeltaSpeed := nSpeed, nDeltaTime := nTime, bDone => bDone); 
+				IF nSpeed = nDeltaSpeedRef AND nTime = nDeltaTimeRef AND bDone THEN //Acceleration values were set correctly
+					step := step+1;
+				END_IF
+				
+			3: //set drive to velocity
+				nTargetVelocity := 1500;
+				nDecVelocity := nTargetVelocity;	
+				fDesiredDeceleration := TO_REAL(nDeltaSpeedRef/nDeltaTimeRef); // dec reference		
+				bSetVelocity := TRUE;
+				fbVelocityMode(sNetID := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nTargetVelocity := nTargetVelocity,
+							bSetVelocity := bSetVelocity,
+							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
+				tTimer(IN:=TRUE, PT:=T#500MS);
+				IF tTimer.Q THEN
+					tTimer(IN:=FALSE);
+					step := step+1;
+				END_IF
+			
+			4:
+				IF nActualVelocity > 0.99*nTargetVelocityAfterLimit THEN 
+					nTargetVelocity := 0;
+					step := step+1;
+				END_IF
+
+			5: //test run of drive for validation of deceleration 
+				bSetVelocity := TRUE;
+				fbVelocityMode(sNetID := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nTargetVelocity := nTargetVelocity,
+							bSetVelocity := bSetVelocity,
+							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
+				fTrigger(CLK := fbVelocityMode.bBusy);
+				IF fTrigger.Q THEN
+					tTimeDec1 := TIME();
+					step := step+1;
+				END_IF
+				
+			6:
+				IF nActualVelocity = nTargetVelocity THEN
+					tTimeDec2 := TIME();
+					tDiff := tTimeDec2 - tTimeDec1; //time difference of drive to decelerate
+					nDecMeasured := TO_REAL(nDecVelocity*1000/TIME_TO_DINT(tDiff));
+					step := step+1;
+				END_IF
+			
+			7:	//validation
+				IF  nDecMeasured > ((1-fToleranceAccDec)*fDesiredDeceleration) 
+				AND nDecMeasured < ((1+fToleranceAccDec)*fDesiredDeceleration) THEN //within range of tolerance: default 5%
+					bTestDecel_Success := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+					msgFmtStr := 'Deceleration test success.',
+					strArg := '');
+				ELSE
+					bTestDecel_Failed := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
+						msgFmtStr := 'Deceleration test failed. Motor deceleration not within range of reference values.',
+						strArg := '');
+				END_IF
+				bWriteDefaultValues := TRUE;
+				eTestMode := STOP_DRIVE; //stop and restore default variables
+		END_CASE
+		
+		//Error handling timeout
+		IF tTimeout.Q THEN
+			eTestMode := WRITE_DEFAULT_VALUES; //restore default variables
+			bTestDecel_Failed := TRUE;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
+				msgFmtStr := 'Deceleration test failed. Timeout.',
+				strArg := '');
+		END_IF
+		
+
+	
+//	(* Test velocity limtis *)
+	TEST_LIMITS: 
+		tTimeout(IN:=TRUE, PT:=T#15S);
+		CASE step OF
+			1: 
+				nTargetVelocity := 2000;
+				WriteVelocityLimits(nVelocityMinLimit := nMinLimitRef, nVelocityMaxLimit := nMaxLimitRef, bDone => bDone);
+				IF bDone THEN
+					step := step+1;
+				END_IF
+				
+			2: //test max limit
+				bSetVelocity := TRUE;
+				fbVelocityMode(sNetID := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nTargetVelocity := nTargetVelocity,
+							bSetVelocity := bSetVelocity,
+							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
+				IF NOT fbVelocityMode.bBusy THEN
+					bIsAccelerating := TRUE;
+					step := step+1;
+				END_IF
+			
+			3:
+				tTimer(IN := bIsAccelerating, PT := T#3S); //run for x seconds
+				IF tTimer.Q THEN 
+					tTimer(IN:=FALSE);
+					step := step+1;
+				END_IF
+			
+			4:
+				IF TO_REAL(nActualVelocity) > ((1+fToleranceLimit)*TO_REAL(nMaxLimitRef))(* 10% overshot accounted *) THEN 
+					bMaxLimitTest_Failed := TRUE;
+					eTestMode := WRITE_DEFAULT_VALUES;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
+						msgFmtStr := 'Max limit test failed.',
+						strArg := '');			
+				ELSE
+					bMaxLimitTest_Success := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+						msgFmtStr := 'Max limit test success.',
+						strArg := '');
+					step := step+1;
+				END_IF
+				bIsAccelerating := FALSE;
+				nTargetVelocity := 0;
+				
+			5: //test min limit
+				bSetVelocity := TRUE;
+				fbVelocityMode(sNetID := GVL.sNetId,
+							nSlaveAddr := GVL.nSlaveAddr,
+							nTargetVelocity := nTargetVelocity,
+							bSetVelocity := bSetVelocity,
+							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
+				IF NOT fbVelocityMode.bBusy THEN
+					bIsDecelerating := TRUE;
+					step := step+1;
+				END_IF
+								
+			6:
+				tTimer(IN := bIsDecelerating, PT := T#3S); //run for x seconds
+				IF tTimer.Q THEN 
+					tTimer(IN:=FALSE);
+					step := step+1;
+				END_IF
+			
+			7:
+				// a way for dynamic time determination
+//				fTimeFaktor := DINT_TO_REAL((nActualVelocity-nTargetVelocity)/nSpeedDec); 
+//				tDecTime := REAL_TO_TIME(2000+fTimeFaktor * nDefaultDecTime*1000); //acceleration time, min 2s
+//				tTimer(IN := bIsDecelerating, PT := tDecTime);
+				IF TO_REAL(nActualVelocity) < ((1-fToleranceLimit)*TO_REAL(nMinLimitRef))(*10% overshot accounted*) THEN 
+					bMinLimitTest_Failed := TRUE;
+					eTestMode := WRITE_DEFAULT_VALUES;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
+						msgFmtStr := 'Min limit test failed.',
+						strArg := '');										
+				ELSE //time at witch the drive would be on targetvelocity without limit acitve
+					bMinLimitTest_Success := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+						msgFmtStr := 'Min limit test success.',
+						strArg := '');
+					step := step+1;
+				END_IF
+				bIsDecelerating := FALSE;
+			
+			8:
+				IF bMinLimitTest_Success AND bMaxLimitTest_Success THEN
+					bTestLimits_Success := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+						msgFmtStr := 'Limit test success.',
+						strArg := '');
+				ELSE
+					bTestLimits_Failed := TRUE;
+					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+						msgFmtStr := 'Limit test failed.',
+						strArg := '');
+				END_IF
+				bStopAfterLimitTest := TRUE;
+				step := 1;
+				eTestMode := WRITE_DEFAULT_VALUES; //stop and restore default variables				
+		END_CASE
+
+END_CASE
+
+]]></ST>
+    </Implementation>
+    <Method Name="ReadAcc" Id="{e3c48449-9c97-4a77-9297-b784e0183525}">
+      <Declaration><![CDATA[METHOD ReadAcc : BOOL
+VAR_IN_OUT
+	nDeltaSpeed 	: DINT;
+	nDeltaTime 		: DINT;
+	//bRead : BOOL;
+END_VAR
+VAR_OUTPUT
+	bDone			: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bDone := FALSE;
+//IF bRead THEN
+	fbReadAcc1(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6048,
+				nSubindex := 1, //delta speed
+				pDstBuf := ADR(nDeltaSpeed),
+				cbBufLen := SIZEOF(nDeltaSpeed),
+				bExecute := TRUE);
+	
+	fbReadAcc2(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6048,
+				nSubindex := 2, //delta time
+				pDstBuf := ADR(nDeltaTime),
+				cbBufLen := SIZEOF(nDeltaTime),
+				bExecute := TRUE);
+//END_IF
+IF NOT fbReadAcc1.bBusy AND NOT fbReadAcc2.bBusy THEN
+	fbReadAcc1(bExecute := FALSE); 
+	fbReadAcc2(bExecute := FALSE); 
+	//bRead := FALSE;
+	bDone := TRUE;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ReadDec" Id="{e45b2a1f-0cb3-4833-bae8-dcdaf37ba200}">
+      <Declaration><![CDATA[METHOD ReadDec : BOOL
+VAR_IN_OUT
+	nDeltaSpeed 	: DINT;
+	nDeltaTime 		: DINT;
+END_VAR
+VAR_OUTPUT
+	bDone			: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bDone := FALSE;
+fbReadDec1(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6049,
+			nSubindex := 1, //delta speed
+			pDstBuf := ADR(nDeltaSpeed),
+			cbBufLen := SIZEOF(nDeltaSpeed),
+			bExecute := TRUE);
+
+fbReadDec2(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6049,
+			nSubindex := 2, //delta time
+			pDstBuf := ADR(nDeltaTime),
+			cbBufLen := SIZEOF(nDeltaTime),
+			bExecute := TRUE);
+
+IF NOT fbReadDec1.bBusy AND NOT fbReadDec2.bBusy THEN
+	fbReadDec1(bExecute := FALSE); 
+	fbReadDec2(bExecute := FALSE); 
+	bDone := TRUE;
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ReadVelocityLimits" Id="{28faed02-81cc-46cf-a69e-8cd4d1c78700}">
+      <Declaration><![CDATA[METHOD ReadVelocityLimits : BOOL
+VAR_IN_OUT
+	nVelocityMinLimit 	: DINT;
+	nVelocityMaxLimit 	: DINT;
+END_VAR
+VAR_OUTPUT
+	bDone			: BOOL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bDone := FALSE;
+	fbReadVelocityLimits1(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 1, //v_min
+			pDstBuf := ADR(nVelocityMinLimit),
+			cbBufLen := SIZEOF(nVelocityMinLimit),
+			bExecute := TRUE);
+	
+	fbReadVelocityLimits2(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 2, //v_max
+			pDstBuf := ADR(nVelocityMaxLimit),
+			cbBufLen := SIZEOF(nVelocityMaxLimit),
+			bExecute := TRUE);
+			
+IF NOT fbReadVelocityLimits1.bBusy AND NOT fbReadVelocityLimits2.bBusy THEN
+	fbReadVelocityLimits1(bExecute := FALSE); 
+	fbReadVelocityLimits2(bExecute := FALSE); 
+	bDone := TRUE;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{fc6a9047-f49c-42bb-b0e5-2f9430701acc}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bObject6043tested				:= FALSE;
+bObject6046tested				:= FALSE;
+bObject6048tested				:= FALSE;
+bObject6049tested				:= FALSE;
+
+bTestBasicOperation_Success		:= FALSE;
+bTestAccel_Success				:= FALSE;	
+bTestDecel_Success				:= FALSE;
+bTestLimits_Success				:= FALSE;
+
+bTestBasicOperation_Failed		:= FALSE;
+bTestAccel_Failed				:= FALSE;
+bTestDecel_Failed				:= FALSE;
+bTestLimits_Failed				:= FALSE;
+bSingleTestFailed					:= FALSE;
+
+bMaxLimitTest_Success			:= FALSE;
+bMinLimitTest_Success			:= FALSE;
+bMaxLimitTest_Failed			:= FALSE;
+bMinLimitTest_Failed			:= FALSE;
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteAcc" Id="{4e619245-244d-4e12-bcc6-7e307a138610}">
+      <Declaration><![CDATA[METHOD WriteAcc : BOOL
+VAR_IN_OUT
+	nDeltaSpeedRef	: DINT;
+	nDeltaTimeRef	: DINT;
+END_VAR
+VAR_OUTPUT
+	bDone 			: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bDone := FALSE;
+fbWriteAcc1(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6048,
+		nSubindex := 1, //delta speed
+		pSrcBuf := ADR(nDeltaSpeedRef),
+		cbBufLen := SIZEOF(nDeltaSpeedRef),
+		bExecute := TRUE);	
+			
+fbWriteAcc2(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6048,
+		nSubindex := 2, //delta time
+		pSrcBuf := ADR(nDeltaTimeRef),
+		cbBufLen := SIZEOF(nDeltaTimeRef),
+		bExecute := TRUE);
+
+IF NOT fbWriteAcc1.bBusy AND NOT fbWriteAcc2.bBusy THEN
+	fbWriteAcc1(bExecute := FALSE); 
+	fbWriteAcc2(bExecute := FALSE); 
+	bDone := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteDec" Id="{49b244e7-3f3f-4579-bebc-97e669db9016}">
+      <Declaration><![CDATA[METHOD WriteDec : BOOL
+VAR_IN_OUT
+	nDeltaSpeedRef	: DINT;
+	nDeltaTimeRef	: DINT;
+END_VAR
+VAR_OUTPUT
+	bDone 			: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bDone := FALSE;
+fbWriteDec1(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6049,
+		nSubindex := 1, //delta speed
+		pSrcBuf := ADR(nDeltaSpeedRef),
+		cbBufLen := SIZEOF(nDeltaSpeedRef),
+		bExecute := TRUE);	
+			
+fbWriteDec2(sNetId := GVL.sNetId,
+		nSlaveAddr := GVL.nSlaveAddr,
+		nIndex := 16#6049,
+		nSubindex := 2, //delta time
+		pSrcBuf := ADR(nDeltaTimeRef),
+		cbBufLen := SIZEOF(nDeltaTimeRef),
+		bExecute := TRUE);
+			
+IF NOT fbWriteDec1.bBusy AND NOT fbWriteDec2.bBusy THEN
+	fbWriteDec1(bExecute := FALSE); 
+	fbWriteDec2(bExecute := FALSE); 
+	bDone := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteVelocityLimits" Id="{6f6492e4-84bf-40f0-b1ae-f478583bbdec}">
+      <Declaration><![CDATA[METHOD WriteVelocityLimits : BOOL
+VAR_IN_OUT
+	nVelocityMinLimit 	: DINT;
+	nVelocityMaxLimit 	: DINT;
+END_VAR
+VAR_OUTPUT
+	bDone			: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bDone := FALSE;
+	fbWriteVelocityLimits1(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 1, //v_min
+			pSrcBuf := ADR(nVelocityMinLimit),
+			cbBufLen := SIZEOF(nVelocityMinLimit),
+			bExecute := TRUE);
+	
+	fbWriteVelocityLimits2(sNetId := GVL.sNetId,
+			nSlaveAddr := GVL.nSlaveAddr,
+			nIndex := 16#6046,
+			nSubindex := 2, //v_max
+			pSrcBuf := ADR(nVelocityMaxLimit),
+			cbBufLen := SIZEOF(nVelocityMaxLimit),
+			bExecute := TRUE);
+			
+IF NOT fbWriteVelocityLimits1.bBusy AND NOT fbWriteVelocityLimits2.bBusy THEN
+	fbWriteVelocityLimits1(bExecute := FALSE); 
+	fbWriteVelocityLimits2(bExecute := FALSE); 
+	bDone := TRUE;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="P_ProfileVelocityModeTest">
+      <LineId Id="7434" Count="552" />
+      <LineId Id="829" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ProfileVelocityModeTest.ReadAcc">
+      <LineId Id="122" Count="0" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="35" Count="4" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="64" Count="6" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="114" Count="1" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="100" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ProfileVelocityModeTest.ReadDec">
+      <LineId Id="29" Count="0" />
+      <LineId Id="31" Count="18" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="23" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ProfileVelocityModeTest.ReadVelocityLimits">
+      <LineId Id="143" Count="0" />
+      <LineId Id="174" Count="5" />
+      <LineId Id="151" Count="1" />
+      <LineId Id="180" Count="5" />
+      <LineId Id="159" Count="0" />
+      <LineId Id="186" Count="0" />
+      <LineId Id="161" Count="2" />
+      <LineId Id="165" Count="1" />
+      <LineId Id="131" Count="0" />
+      <LineId Id="81" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ProfileVelocityModeTest.Reset">
+      <LineId Id="6" Count="18" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="25" Count="2" />
+    </LineIds>
+    <LineIds Name="P_ProfileVelocityModeTest.WriteAcc">
+      <LineId Id="39" Count="0" />
+      <LineId Id="7" Count="6" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="15" Count="5" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="30" Count="2" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="23" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ProfileVelocityModeTest.WriteDec">
+      <LineId Id="35" Count="20" />
+      <LineId Id="23" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ProfileVelocityModeTest.WriteVelocityLimits">
+      <LineId Id="62" Count="22" />
+      <LineId Id="24" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

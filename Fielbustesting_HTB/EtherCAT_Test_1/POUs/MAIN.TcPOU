@@ -22,12 +22,14 @@ VAR
 	bTargetPosition			: BOOL;							//0x607A
 	
 	fbSetToPPMode			: FB_EcCoeSdoWrite;
-	fbSetToVelocityMode		: FB_EcCoeSdoWrite;
+	fbSetToOperationMode		: FB_EcCoeSdoWrite;
+	fbReadMode				: FB_EcCoeSdoRead;
 	bSetToPPMode			: BOOL;
 	bSetToVelocityMode		: BOOL := TRUE;
 	tSetToPPMode			: TON;
-	fSetToVelocityMode		: F_TRIG;
-	nModeOfOperation		: UDINT := 2;
+	fSetToOperationMode		: F_TRIG;
+	nModeOfOperation		: UDINT := 3;
+	nMode					: UDINT;
 	bBasicTest 				: BOOL := FALSE;
 END_VAR
 
@@ -53,50 +55,52 @@ IF tSetToPPMode.Q THEN
 	P_ProfilePositionModeTest();	
 END_IF
 *)
-IF bBasicTest THEN
-	BasicTests();
-ELSE
-//TODO read IF velocitymode was set via FB
-fbSetToVelocityMode(sNetId := GVL.sNetId, 
+
+
+fbSetToOperationMode(sNetId := GVL.sNetId, 
 				nSlaveAddr := GVL.nSlaveAddr,
 				nIndex := 16#6060,
 				pSrcBuf := ADR(nModeOfOperation),
 				cbBufLen := SIZEOF (nModeOfOperation),
 				bExecute := bSetToVelocityMode);
-fSetToVelocityMode(CLK := fbSetToVelocityMode.bBusy);
+fSetToOperationMode(CLK := fbSetToOperationMode.bBusy);
 
-IF fSetToVelocityMode.Q THEN
-	bVelocityModeActive := TRUE;
-	ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-				msgFmtStr := 'Set to velocity mode.',
-				strArg := '');
+IF fSetToOperationMode.Q THEN
+	bSetToVelocityMode := FALSE;
+	fbReadMode(sNetId := GVL.sNetId, 
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6060,
+				pDstBuf := ADR(nMode),
+				cbBufLen := SIZEOF (nMode),
+				bExecute := TRUE);
 END_IF
-IF bVelocityModeActive THEN
-	P_VelocityModeTest();
-END_IF
-END_IF]]></ST>
+
+CASE nMode OF
+	2: 	P_VelocityModeTest();
+		ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to velocity mode.', strArg := '');
+		
+	3: 	P_ProfileVelocityModeTest();
+		ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to profile velocity mode.', strArg := '');
+END_CASE
+fbReadMode(bExecute := FALSE);
+
+]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="2" Count="0" />
-      <LineId Id="17" Count="1" />
-      <LineId Id="20" Count="0" />
-      <LineId Id="9" Count="1" />
-      <LineId Id="59" Count="0" />
-      <LineId Id="33" Count="0" />
-      <LineId Id="60" Count="0" />
-      <LineId Id="62" Count="1" />
-      <LineId Id="65" Count="1" />
-      <LineId Id="70" Count="0" />
-      <LineId Id="72" Count="0" />
-      <LineId Id="68" Count="1" />
-      <LineId Id="75" Count="1" />
-      <LineId Id="104" Count="0" />
-      <LineId Id="176" Count="0" />
-      <LineId Id="131" Count="0" />
-      <LineId Id="248" Count="0" />
-      <LineId Id="177" Count="0" />
-      <LineId Id="278" Count="16" />
-      <LineId Id="130" Count="0" />
+      <LineId Id="451" Count="30" />
+      <LineId Id="504" Count="0" />
+      <LineId Id="482" Count="5" />
+      <LineId Id="491" Count="0" />
+      <LineId Id="500" Count="0" />
+      <LineId Id="495" Count="1" />
+      <LineId Id="501" Count="0" />
+      <LineId Id="503" Count="0" />
+      <LineId Id="499" Count="0" />
+      <LineId Id="502" Count="0" />
+      <LineId Id="494" Count="0" />
+      <LineId Id="342" Count="0" />
+      <LineId Id="506" Count="0" />
+      <LineId Id="505" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

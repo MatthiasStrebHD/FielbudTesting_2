@@ -38,10 +38,16 @@
     <Compile Include="POUs\ProfilePositionMode\Motion.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="POUs\ProfileVelocityMode\ProfileVelocityMode.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="POUs\P_ProfilePositionModeTest.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\P_VelocityModeTest.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\P_ProfileVelocityModeTest.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\StartUpTests.TcPOU">
@@ -60,6 +66,7 @@
   <ItemGroup>
     <Folder Include="DUTs" />
     <Folder Include="GVLs" />
+    <Folder Include="POUs\ProfileVelocityMode" />
     <Folder Include="POUs\VelocityMode" />
     <Folder Include="POUs\ProfilePositionMode" />
     <Folder Include="VISUs" />
