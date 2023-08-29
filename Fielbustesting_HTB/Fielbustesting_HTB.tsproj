@@ -1431,7 +1431,7 @@ External Setpoint Generation:
 		</System>
 		<Motion>
 			<NC>
-				<SafTask Priority="4" CycleTime="20000" AmsPort="501" IoAtBegin="true" AmsNetId="10.200.30.127.1.1" SafTaskInfo="256">
+				<SafTask Priority="4" CycleTime="20000" AmsPort="501" IoAtBegin="true" SafTaskInfo="256">
 					<Name>NC-Task 1 SAF</Name>
 					<Vars VarGrpType="1" InsertType="1">
 						<Name>Inputs</Name>
@@ -1792,9 +1792,6 @@ External Setpoint Generation:
 				<EtherCAT/>
 			</Device>
 		</Io>
-		<SymbolWatch>
-			<Variable>TIID^Device 1 (EtherCAT)^Drive 5 (HTB)^Module 1 (csp - axis)^Inputs^Status Word</Variable>
-		</SymbolWatch>
 	</Project>
 	<Mappings>
 		<MappingInfo Identifier="{00000000-2001-0850-0020-500810000403}" Id="#x02030010"/>

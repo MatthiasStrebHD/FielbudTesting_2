@@ -1406,12 +1406,12 @@ External Setpoint Generation:
 			</Relations>
 		</DataType>
 		<DataType>
-			<Name GUID="{18071995-0000-0000-0000-002000000010}" IecBaseType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..1] OF BYTE</Name>
-			<BitSize>16</BitSize>
+			<Name GUID="{18071995-0000-0000-0000-002000000020}" IecBaseType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..3] OF BYTE</Name>
+			<BitSize>32</BitSize>
 			<BaseType GUID="{18071995-0000-0000-0000-000000000001}">BYTE</BaseType>
 			<ArrayInfo>
 				<LBound>0</LBound>
-				<Elements>2</Elements>
+				<Elements>4</Elements>
 			</ArrayInfo>
 		</DataType>
 	</DataTypes>
@@ -1431,7 +1431,7 @@ External Setpoint Generation:
 		</System>
 		<Motion>
 			<NC>
-				<SafTask Priority="4" CycleTime="20000" AmsPort="501" IoAtBegin="true" AmsNetId="10.200.30.127.1.1" SafTaskInfo="256">
+				<SafTask Priority="4" CycleTime="20000" AmsPort="501" IoAtBegin="true" SafTaskInfo="256">
 					<Name>NC-Task 1 SAF</Name>
 					<Vars VarGrpType="1" InsertType="1">
 						<Name>Inputs</Name>
@@ -1742,33 +1742,33 @@ External Setpoint Generation:
 						<BootStrapData>0010800080108000</BootStrapData>
 						<DcMode>53796e6368726f6e0000000000000000534d2d53796e6368726f6e000000000000000000000000000000000000000000809698000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000</DcMode>
 						<DcMode>4443000000000000000000000000000044432d53796e6368726f6e000000000000000000000000000000000000000000809698000000000000000000000000030100000000000000000000000000000000000000000000000000000000000000</DcMode>
-						<MBoxUserCmdData>100003000900000000000000030000000100090300000000000000000000000020606000010000000800</MBoxUserCmdData>
-						<Pdo Name="Inputs" Index="#x1a03" Flags="#x0290" SyncMan="3">
+						<MBoxUserCmdData>100003000900000000000000030000000100090300000000000000000000000020606000010000000400</MBoxUserCmdData>
+						<Pdo Name="Inputs" Index="#x1a00" Flags="#x0290" SyncMan="3">
 							<Entry Name="Status Word" Index="#x6041" Flags="#x00001000">
 								<Type>UINT</Type>
 								<Comment><![CDATA[object 0x6041:0]]></Comment>
 							</Entry>
-							<Entry Name="ActualPosition" Index="#x6064" Flags="#x00001000">
-								<Type>DINT</Type>
-								<Comment><![CDATA[object 0x6064:0]]></Comment>
+							<Entry Name="TorqueActualValue" Index="#x6064" Flags="#x00001000">
+								<Type>INT</Type>
+								<Comment><![CDATA[object 0x6077:0]]></Comment>
 							</Entry>
 							<Entry>
-								<Type GUID="{18071995-0000-0000-0000-002000000010}">ARRAY [0..1] OF BYTE</Type>
-								<Comment><![CDATA[16bit padding]]></Comment>
+								<Type GUID="{18071995-0000-0000-0000-002000000020}">ARRAY [0..3] OF BYTE</Type>
+								<Comment><![CDATA[32bit padding]]></Comment>
 							</Entry>
 						</Pdo>
-						<Pdo Name="Outputs" Index="#x1603" InOut="1" Flags="#x0290" SyncMan="2">
+						<Pdo Name="Outputs" Index="#x1600" InOut="1" Flags="#x0290" SyncMan="2">
 							<Entry Name="Control Word" Index="#x6040" Flags="#x00001000">
 								<Type>UINT</Type>
 								<Comment><![CDATA[object 0x6040:0]]></Comment>
 							</Entry>
-							<Entry Name="TargetPosition" Index="#x607a" Flags="#x00001000">
-								<Type>DINT</Type>
-								<Comment><![CDATA[object 0x607A:0]]></Comment>
+							<Entry Name="TargetTorque" Index="#x6071" Flags="#x00001000">
+								<Type>INT</Type>
+								<Comment><![CDATA[object 0x6071:0]]></Comment>
 							</Entry>
 							<Entry>
-								<Type GUID="{18071995-0000-0000-0000-002000000010}">ARRAY [0..1] OF BYTE</Type>
-								<Comment><![CDATA[16bit padding]]></Comment>
+								<Type GUID="{18071995-0000-0000-0000-002000000020}">ARRAY [0..3] OF BYTE</Type>
+								<Comment><![CDATA[32bit padding]]></Comment>
 							</Entry>
 						</Pdo>
 						<CoeProfile ProfileNo="402"/>
@@ -1778,12 +1778,12 @@ External Setpoint Generation:
 							<ModuleIdent>2201600</ModuleIdent>
 							<ModuleIdent>3250176</ModuleIdent>
 							<ModuleIdent>4298752</ModuleIdent>
-							<Module Id="#x03090001" Type="csp - axis" Class="">
-								<Name>Module 1 (csp - axis)</Name>
+							<Module Id="#x03090001" Type="pt - axis" Class="">
+								<Name>Module 1 (pt - axis)</Name>
 								<ImageId>408</ImageId>
-								<ModuleData>4006000000984100000004000000000000000000000000000000000000000000</ModuleData>
-								<PdoIndex>6659</PdoIndex>
-								<PdoIndex>5635</PdoIndex>
+								<ModuleData>4006000000981100000004000000000000000000000000000000000000000000</ModuleData>
+								<PdoIndex>6656</PdoIndex>
+								<PdoIndex>5632</PdoIndex>
 								<CoeProfile ProfileNo="#x00020192"/>
 							</Module>
 						</Slot>
@@ -1792,11 +1792,5 @@ External Setpoint Generation:
 				<EtherCAT/>
 			</Device>
 		</Io>
-		<SymbolWatch>
-			<Variable>TIID^Device 1 (EtherCAT)^Drive 5 (HTB)^Module 1 (csp - axis)^Inputs^Status Word</Variable>
-		</SymbolWatch>
 	</Project>
-	<Mappings>
-		<MappingInfo Identifier="{00000000-2001-0850-0020-500810000403}" Id="#x02030010"/>
-	</Mappings>
 </TcSmProject>
