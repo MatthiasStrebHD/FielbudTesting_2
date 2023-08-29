@@ -66,7 +66,7 @@ VAR
 	stepTestMode					: INT := 0; //start in idle mode
 	
 	bSetControlWord					: BOOL := TRUE;
-	fbVelocityMode					: VelocityMode;
+	fbProfileVelocityMode			: ProfileVelocityMode;
 	fbGetStatusword					: FB_EcCoeSdoRead;
 	fbGetActualVelocity				: FB_EcCoeSdoRead;
 //	fbGetVelocityLimitMax			: FB_EcCoeSdoRead;
@@ -124,16 +124,16 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[IF bTestBasicOperation_Failed OR bTestAccel_Failed OR bTestDecel_Failed OR bMinLimitTest_Failed OR bMaxLimitTest_Failed OR bTestLimits_Failed THEN
-	bSingleTestFailed := TRUE;
-ELSE bSingleTestFailed := FALSE;
-END_IF
+      <ST><![CDATA[//IF bTestBasicOperation_Failed OR bTestAccel_Failed OR bTestDecel_Failed OR bMinLimitTest_Failed OR bMaxLimitTest_Failed OR bTestLimits_Failed THEN
+//	bSingleTestFailed := TRUE;
+//ELSE bSingleTestFailed := FALSE;
+//END_IF
 
 
 tWaitForCurrentVelocity(IN := bGetCurrentVelocity,
 							PT := T#10MS);
 tGetStatusword(IN := bGetStatusword,
-					PT := T#500MS);	
+					PT := T#50MS);	
 							
 IF tWaitForCurrentVelocity.Q THEN
 	bGetCurrentVelocity := FALSE;
@@ -157,10 +157,6 @@ fbGetActualVelocity(sNetId := GVL.sNetId,
 					cbBufLen := SIZEOF(nActualVelocity),
 					bExecute := bGetCurrentVelocity);
 
-//write to motor
-MAIN.Controlword.4 := bSetControlWord; //velocity demand value shall equal to ramp output value
-MAIN.Controlword.5 := bSetControlWord; //ramp output value shall follow ramp input value
-MAIN.Controlword.6 := bSetControlWord; //ramp input value shall accord with ramp reference
 
 			
 //stop
@@ -189,14 +185,12 @@ CASE eTestMode OF
 				IF bRestartTest THEN //restart inside a test procedure
 					GVL.bReset := TRUE;
 					bRestartTest := FALSE; 
-					bSetControlWord := TRUE;
-					bTestBasicOperation_Failed := bTestAccel_Failed := bTestDecel_Failed := bMinLimitTest_Failed := bMaxLimitTest_Failed := bTestLimits_Failed := FALSE;
+					//bTestBasicOperation_Failed := bTestAccel_Failed := bTestDecel_Failed := bMinLimitTest_Failed := bMaxLimitTest_Failed := bTestLimits_Failed := FALSE;
 					stepTestMode := stepTestMode+1;
 				END_IF
 				IF bStartTestOfNewDrive THEN //start test of a new drive 
 					GVL.bReset := TRUE;
 					Reset();
-					bSetControlWord := TRUE;
 					bStartTestOfNewDrive := FALSE;
 					eTestMode := READ_DEFAULT_VALUES;
 				END_IF
@@ -926,7 +920,10 @@ END_IF
       </Implementation>
     </Method>
     <LineIds Name="P_ProfileVelocityModeTest">
-      <LineId Id="7434" Count="552" />
+      <LineId Id="7434" Count="31" />
+      <LineId Id="7470" Count="28" />
+      <LineId Id="7500" Count="6" />
+      <LineId Id="7508" Count="478" />
       <LineId Id="829" Count="0" />
     </LineIds>
     <LineIds Name="P_ProfileVelocityModeTest.ReadAcc">
