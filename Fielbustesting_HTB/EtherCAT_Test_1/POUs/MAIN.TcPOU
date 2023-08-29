@@ -23,12 +23,12 @@ VAR
 	
 	fbSetToOperationMode	: FB_EcCoeSdoWrite;
 	fbReadOperationMode		: FB_EcCoeSdoRead;
-	bSetToOperationMode		: BOOL := TRUE;
+	bSetToOperationMode		: BOOL;// := TRUE;
 	tSetToPPMode			: TON;
 	fSetToOperationMode		: F_TRIG;
 	nModeRef				: UDINT := 3;
 	nModeOfOperation		: UDINT;
-	bBasicTest 				: BOOL := FALSE;
+	bBasicTest 				: BOOL := TRUE;
 END_VAR
 
 ]]></Declaration>
@@ -40,6 +40,9 @@ END_VAR
 //	sNetID := GVL.sNetId,
 //	nSlaveAddr := GVL.nSlaveAddr);
 
+IF bBasicTest THEN
+	BasicTests();
+END_IF
 
 fbSetToOperationMode(sNetId := GVL.sNetId, 
 				nSlaveAddr := GVL.nSlaveAddr,
@@ -53,26 +56,35 @@ IF fSetToOperationMode.Q THEN
 	bSetToOperationMode := FALSE;
 	fbReadOperationMode(sNetId := GVL.sNetId, 
 				nSlaveAddr := GVL.nSlaveAddr,
-				nIndex := 16#6060,
-				pDstBuf := ADR(nModeRef),
-				cbBufLen := SIZEOF (nModeRef),
+				nIndex := 16#6061,
+				pDstBuf := ADR(nModeOfOperation),
+				cbBufLen := SIZEOF (nModeOfOperation),
 				bExecute := TRUE);
 END_IF
 
-CASE nModeOfOperation OF
-	1: 	P_ProfilePositionModeTest();		
-		ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to profile position mode.', strArg := '');
+IF NOT bBasicTest THEN
+	CASE nModeOfOperation OF
+		1: 	P_ProfilePositionModeTest();		
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to profile position mode.', strArg := '');
+			
+		2: 	P_VelocityModeTest();
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to velocity mode.', strArg := '');
 		
-	2: 	P_VelocityModeTest();
-		ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to velocity mode.', strArg := '');
-	
-	3: 	P_ProfileVelocityModeTest();
-		ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to profile velocity mode.', strArg := '');
-END_CASE
+		3: 	P_ProfileVelocityModeTest();
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Set to profile velocity mode.', strArg := '');
+	END_CASE
+END_IF
 fbReadOperationMode(bExecute := FALSE);]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="530" Count="35" />
+      <LineId Id="530" Count="5" />
+      <LineId Id="566" Count="0" />
+      <LineId Id="536" Count="0" />
+      <LineId Id="567" Count="1" />
+      <LineId Id="537" Count="17" />
+      <LineId Id="569" Count="0" />
+      <LineId Id="555" Count="10" />
+      <LineId Id="570" Count="0" />
       <LineId Id="347" Count="0" />
     </LineIds>
   </POU>

@@ -3,147 +3,24 @@
   <POU Name="BasicTests" Id="{9cc815f1-e038-4b96-a0f9-bc6181ca148a}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM BasicTests
 VAR
-	fbWriteMax : FB_EcCoESdoWrite;
-	fbWriteMin : FB_EcCoESdoWrite;
-	fbVelocityMode : VelocityMode;
+	fbProfileVelocityMode : FB_EcCoeSdoWrite;
 	nTargetVelocity : DINT := 500;
 	bSetVelocity: BOOL;
-	nSpeed : DINT :=1000;
-	nTime : DINT := 1;
-	bWriteBasicTest: BOOL;
-	nMax: DINT := 4800;
-	nMin: DINT := 0;
-	step: INT := 1;
-END_VAR
-VAR
-	fbSetToVelocityMode		: FB_EcCoeSdoWrite;
-	fbReadAcc				: FB_EcCoeSdoRead;
-	fbWriteAcc1				: FB_EcCoeSdoWrite;
-	fbWriteAcc2				: FB_EcCoeSdoWrite;
-	fbReadVMax				: FB_EcCoeSdoRead;
-	fbReadVMin				: FB_EcCoeSdoRead;
-	fbReadVAct				: FB_EcCoeSdoRead;
-	nModeOfOperation		: UDINT := 2;
-	bSetToVelocityMode		: BOOL;
-	nMode					: DINT;
-	nVMax					: DINT;
-	bRead					: BOOL;
-	bReadVMax				: BOOL;
-	bAnzeigeBusy			: BOOL;
-	fTrig					: F_TRIG;
-	nVMin: DINT;
-	bReadVMin: BOOL;
-	fvmaxtrig: F_TRIG;
-	nActualVelocity			: DINT;
-	
-	tReadAccSpeed			: TON;
-	tReadAccTime			: TON;
-	bGetAccSpeed			: BOOL;
-	bGetAccTime				: BOOL;
-	nAcc: DINT;
-	nSpeedRef: DINT := 800;
-	bSetAccSpeed: BOOL;
-	nTimeRef: DINT := 1;
-	bSetAccTime: BOOL;
-	fbSetVelocity			: FB_EcCoeSdoWrite;
-	nVelocityBuff: DINT := 500;
-	bWriteToFB: BOOL;
-	fbEnableDevice			: FB_EnableDevice;
-END_VAR
-]]></Declaration>
+END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[//fbWriteAcc1(sNetId := GVL.sNetId,
-//		nSlaveAddr := GVL.nSlaveAddr,
-//		nIndex := 16#6048,
-//		nSubindex := 1, //delta speed
-//		pSrcBuf := ADR(nSpeed),
-//		cbBufLen := SIZEOF(nSpeed),
-//		bExecute := TRUE);	
-			
-//fbWriteAcc2(sNetId := GVL.sNetId,
-//		nSlaveAddr := GVL.nSlaveAddr,
-//		nIndex := 16#6048,
-//		nSubindex := 2, //delta time
-//		pSrcBuf := ADR(nTime),
-//		cbBufLen := SIZEOF(nTime),
-//		bExecute := TRUE);
-
-//IF NOT fbWriteAcc1.bBusy AND NOT fbWriteAcc2.bBusy THEN
-//	fbWriteAcc1(bExecute := FALSE); 
-//	fbWriteAcc2(bExecute := FALSE); 
-//END_IF
-
-
-//CASE step OF
-//	1: 
-//		MAIN.Controlword := 0;
-//		step := step+1;
-//	2:	
-//		fbEnableDevice (bTrigger := bSetVelocity,
-//			sNetId := GVL.sNetId,
-//			nSlaveAddr := GVL.nSlaveAddr);
-//		IF fbEnableDevice.bFinished THEN
-//			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-//				msgFmtStr := 'Device enabled.',
-//				strArg := '');
-//			step := step+1;
-//		END_IF
-//	3: 
-//		fbSetVelocity(sNetId := GVL.sNetID,
-//			nSlaveAddr := GVL.nSlaveAddr,
-//			nSubIndex := 0,
-//			nIndex := 16#6042,
-//			pSrcBuf := ADR(nVelocityBuff),
-//			cbBufLen := SIZEOF(nVelocityBuff),
-//			bExecute := bWriteToFB);
-//END_CASE
-
-
-
-
-
-
-
-
-fbWriteMax(sNetId := GVL.sNetId,
+      <ST><![CDATA[fbProfileVelocityMode(sNetId := GVL.sNetId,
 		nSlaveAddr := GVL.nSlaveAddr,
-		nIndex := 16#6046,
-		nSubindex := 2, //max
-		pSrcBuf := ADR(nMax),
-		cbBufLen := SIZEOF(nMax),
-		bExecute := TRUE);	
+		nIndex := 16#60FF,
+		nSubindex := 0,
+		pSrcBuf := ADR(nTargetVelocity),
+		cbBufLen := SIZEOF(nTargetVelocity),
+		bExecute := bSetVelocity);	
 			
-fbWriteMin(sNetId := GVL.sNetId,
-		nSlaveAddr := GVL.nSlaveAddr,
-		nIndex := 16#6046,
-		nSubindex := 1, //min
-		pSrcBuf := ADR(nMin),
-		cbBufLen := SIZEOF(nMin),
-		bExecute := TRUE);
-			]]></ST>
+]]></ST>
     </Implementation>
     <LineIds Name="BasicTests">
-      <LineId Id="655" Count="18" />
-      <LineId Id="633" Count="2" />
-      <LineId Id="606" Count="0" />
-      <LineId Id="608" Count="0" />
-      <LineId Id="611" Count="0" />
-      <LineId Id="613" Count="0" />
-      <LineId Id="615" Count="0" />
-      <LineId Id="622" Count="0" />
-      <LineId Id="616" Count="5" />
-      <LineId Id="623" Count="0" />
-      <LineId Id="612" Count="0" />
-      <LineId Id="625" Count="0" />
-      <LineId Id="631" Count="0" />
-      <LineId Id="626" Count="4" />
-      <LineId Id="624" Count="0" />
-      <LineId Id="609" Count="0" />
-      <LineId Id="607" Count="0" />
-      <LineId Id="573" Count="0" />
-      <LineId Id="605" Count="0" />
-      <LineId Id="574" Count="3" />
-      <LineId Id="510" Count="16" />
+      <LineId Id="778" Count="7" />
+      <LineId Id="526" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

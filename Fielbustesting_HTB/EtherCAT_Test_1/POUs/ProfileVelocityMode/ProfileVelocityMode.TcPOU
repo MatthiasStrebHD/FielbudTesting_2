@@ -18,7 +18,7 @@ END_VAR
 VAR
 	eMotionState			: (WAIT_FOR_TRIGGER, ENABLE_DEVICE, WAIT_FOR_NEW_VELOCITY, SET_LIMIT, SET_VELOCITY, VALIDATE_VELOCITY, ACKNOWLEDGE_VELOCITY);
 	fbEnableDevice			: FB_EnableDevice;
-	fbSetVelocity			: FB_EcCoeSdoWrite;
+	fbSetProfileVelocity			: FB_EcCoeSdoWrite;
 	fbGetStatusword			: FB_EcCoeSdoRead;
 	fbGetVelocityLimitMin	: FB_EcCoeSdoRead;
 	fbGetVelocityLimitMax	: FB_EcCoeSdoRead;
@@ -49,10 +49,10 @@ END_IF
 ReadLimits();
 bBusy := TRUE; //FB VelocityMode is busy and the target velocity is not jet set
 
-fbSetVelocity(sNetId := sNetID,
+fbSetProfileVelocity(sNetId := sNetID,
 			nSlaveAddr := nSlaveAddr,
 			nSubIndex := 0,
-			nIndex := 16#6042,
+			nIndex := 16#60FF,
 			pSrcBuf := ADR(nVelocityBuff),
 			cbBufLen := SIZEOF(nVelocityBuff),
 			bExecute := bWriteToFB);
@@ -88,44 +88,18 @@ CASE eMotionState OF
 		
 	WAIT_FOR_NEW_VELOCITY:
 		IF nTargetVelocity <> nVelocityBuff THEN
-			eMotionState := SET_LIMIT;
+			eMotionState := SET_VELOCITY;
 		ELSE
 			bSetVelocity := FALSE;
 			bBusy := FALSE; //FB 
 		END_IF
 		
-	
-	SET_LIMIT:
-		bBusy := TRUE;
-		nVelocityBuff := nTargetVelocity;
-		IF nVelocityBuff < nVelocityLimitMin THEN
-			bLimitActive := TRUE;
-			nVelocityBuff := nVelocityLimitMin;
-			nTargetVelocityAfterLimit := nVelocityLimitMin;
-			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-				msgFmtStr := 'Velocity exceeds limit: Minimum limit was set',
-				strArg := '');
-		ELSIF nVelocityBuff > nVelocityLimitMax THEN
-			bLimitActive := TRUE;
-			nVelocityBuff := nVelocityLimitMax;
-			nTargetVelocityAfterLimit := nVelocityLimitMax;
-			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-				msgFmtStr := 'Velocity exceeds limit: Maximum limit was set',
-				strArg := '');
-		ELSE 
-			bLimitActive := FALSE;
-			nTargetVelocityAfterLimit := nTargetVelocity;
-		END_IF
-		nTargetVelocity := nVelocityBuff;
-		eMotionState := SET_VELOCITY;
-	
-		
 	SET_VELOCITY:
 		//set velocity
 		bWriteToFB := TRUE;
-		fFlag(CLK := fbSetVelocity.bBusy); 		
+		fFlag(CLK := fbSetProfileVelocity.bBusy); 		
 		
-		IF fbSetVelocity.bError THEN
+		IF fbSetProfileVelocity.bError THEN
 			//Error when setting Target Velocity
 			bSuccess := FALSE;
 			bWriteToFB := FALSE;
@@ -162,7 +136,6 @@ CASE eMotionState OF
 					strArg := '');
 			END_IF
 			fbGetStatusword(bExecute := FALSE);
-			bSetVelocity := FALSE;
 			bWriteToFB := FALSE;
 			eMotionState := WAIT_FOR_NEW_VELOCITY;
 		END_IF
@@ -199,67 +172,9 @@ END_IF]]></ST>
       </Implementation>
     </Method>
     <LineIds Name="ProfileVelocityMode">
-      <LineId Id="1313" Count="0" />
-      <LineId Id="1587" Count="0" />
-      <LineId Id="1589" Count="0" />
-      <LineId Id="1588" Count="0" />
-      <LineId Id="1583" Count="2" />
-      <LineId Id="1523" Count="0" />
-      <LineId Id="1347" Count="0" />
-      <LineId Id="1421" Count="6" />
-      <LineId Id="1312" Count="0" />
-      <LineId Id="1428" Count="0" />
-      <LineId Id="1586" Count="0" />
-      <LineId Id="1429" Count="0" />
-      <LineId Id="1081" Count="20" />
-      <LineId Id="1105" Count="4" />
-      <LineId Id="1575" Count="0" />
-      <LineId Id="1316" Count="0" />
-      <LineId Id="1328" Count="0" />
-      <LineId Id="1322" Count="0" />
-      <LineId Id="1348" Count="1" />
-      <LineId Id="1352" Count="0" />
-      <LineId Id="1323" Count="0" />
-      <LineId Id="1318" Count="0" />
-      <LineId Id="1321" Count="0" />
-      <LineId Id="1110" Count="0" />
-      <LineId Id="1350" Count="0" />
-      <LineId Id="1325" Count="0" />
-      <LineId Id="1276" Count="0" />
-      <LineId Id="1529" Count="0" />
-      <LineId Id="1131" Count="0" />
-      <LineId Id="1591" Count="0" />
-      <LineId Id="1132" Count="3" />
-      <LineId Id="1530" Count="0" />
-      <LineId Id="1136" Count="0" />
-      <LineId Id="1590" Count="0" />
-      <LineId Id="1137" Count="2" />
-      <LineId Id="1532" Count="0" />
-      <LineId Id="1534" Count="0" />
-      <LineId Id="1592" Count="0" />
-      <LineId Id="1140" Count="0" />
-      <LineId Id="1573" Count="0" />
-      <LineId Id="1141" Count="0" />
-      <LineId Id="1143" Count="0" />
-      <LineId Id="1574" Count="0" />
-      <LineId Id="1144" Count="1" />
-      <LineId Id="1153" Count="0" />
-      <LineId Id="1476" Count="0" />
-      <LineId Id="1486" Count="0" />
-      <LineId Id="1477" Count="7" />
-      <LineId Id="1576" Count="0" />
-      <LineId Id="1579" Count="0" />
-      <LineId Id="1577" Count="1" />
-      <LineId Id="1169" Count="0" />
-      <LineId Id="1487" Count="0" />
-      <LineId Id="1485" Count="0" />
-      <LineId Id="1170" Count="11" />
-      <LineId Id="1183" Count="3" />
-      <LineId Id="1188" Count="4" />
-      <LineId Id="1343" Count="0" />
-      <LineId Id="1315" Count="0" />
-      <LineId Id="1431" Count="0" />
-      <LineId Id="1193" Count="4" />
+      <LineId Id="1701" Count="53" />
+      <LineId Id="1781" Count="42" />
+      <LineId Id="1825" Count="5" />
       <LineId Id="19" Count="0" />
     </LineIds>
     <LineIds Name="ProfileVelocityMode.ReadLimits">
