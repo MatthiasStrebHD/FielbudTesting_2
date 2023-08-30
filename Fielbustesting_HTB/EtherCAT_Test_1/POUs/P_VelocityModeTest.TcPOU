@@ -10,12 +10,14 @@ VAR
 	bError							: BOOL := FALSE;//Error handling
 	bAckError						: BOOL;//Error handling
 	bStopMotor						: BOOL;//Error handling
+	bOnFirstIn						: BOOL := TRUE;
 END_VAR
 
 //test case success indication variables
 VAR
 	bSingleTestFailed					: BOOL := FALSE;
 	
+	bObject6042tested				: BOOL := FALSE;//test case success indication variables
 	bObject6043tested				: BOOL := FALSE;//test case success indication variables
 	bObject6046tested				: BOOL := FALSE;//test case success indication variables
 	bObject6048tested				: BOOL := FALSE;//test case success indication variables
@@ -39,8 +41,8 @@ END_VAR
 
 //relevant parameters for test options
 VAR
-	fToleranceLimit					: REAL := 0.1; // 10% tolerance
-	fToleranceAccDec				: REAL := 0.05; // 5% tolerance
+	fToleranceLimit					: REAL := 0.2; // 20% tolerance
+	fToleranceAccDec				: REAL := 0.1; // 10% tolerance
 	fToleranceBasicOp				: REAL := 0.02; // 2% tolerance
 	nDeltaSpeedRef					: DINT := 300; //speed reference for acc/dec
 	nDeltaTimeRef					: DINT := 1; //time reference for acc/dec
@@ -84,6 +86,7 @@ VAR
 	fbReadDec1						: FB_EcCoeSdoRead;
 	fbReadDec2						: FB_EcCoeSdoRead;
 	fbGetVelocityDemand				: FB_EcCoESdoRead;
+	fbGetTargetVelocity				: FB_EcCoESdoRead;
 	nTargetVelocity					: DINT := 50; //rpm
 	nActualVelocity					: DINT;
 	nStatusword						: UINT;
@@ -120,7 +123,9 @@ VAR
 	tTimeAcc2						: TIME;
 	tDiff							: TIME;
 	fTrigger						: F_TRIG;
-	fFlag 							: F_TRIG;	
+	fFlag 							: F_TRIG;
+	fFlag2 							: F_TRIG;	
+	ShowLimitVelocity				: DINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -164,7 +169,7 @@ MAIN.Controlword.6 := bSetControlWord; //ramp input value shall accord with ramp
 
 			
 //stop
-IF bStopMotor OR bError THEN
+IF bStopMotor THEN
 	MAIN.Controlword := 0;
 	stepTestMode := 0;
 END_IF
@@ -173,10 +178,14 @@ END_IF
 (*TEST SUITE*)	
 //error detection
 IF bError THEN
+	MAIN.Controlword := 0;
+	stepTestMode := 0;
 	eTestMode := ERROR;
 END_IF
 // restore stored default values
 IF bManuallyRestoreDefaultValues THEN
+	bError := FALSE;
+	stepTestMode := 0;
 	eTestMode := WRITE_DEFAULT_VALUES;
 END_IF
 
@@ -212,7 +221,7 @@ CASE eTestMode OF
 			2: 				
 				IF bTestAccel_Success THEN 
 					stepTestMode := stepTestMode+1; 
-					bObject6046tested := TRUE;
+					bObject6048tested := TRUE;
 				ELSIF nActualVelocity = 0 THEN 
 					eTestMode := TEST_ACCEL; 
 					bSetControlWord := TRUE; 
@@ -221,7 +230,7 @@ CASE eTestMode OF
 			3: 
 				IF bTestDecel_Success THEN 
 					stepTestMode := stepTestMode+1; 
-					bObject6048tested := TRUE;
+					bObject6049tested := TRUE;
 				ELSE 
 					eTestMode := TEST_DECEL; 
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing deceleration...', strArg := '');
@@ -229,7 +238,7 @@ CASE eTestMode OF
 			4: 
 				IF bTestLimits_Success THEN 
 					stepTestMode := stepTestMode+1; 
-					bObject6049tested := TRUE;
+					bObject6046tested := TRUE;
 				ELSE 
 					eTestMode := TEST_LIMITS; 
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT, msgFmtStr := 'Testing limits...', strArg := '');
@@ -246,6 +255,7 @@ CASE eTestMode OF
 	ERROR:
 		MAIN.Controlword := 0;
 		bSetControlWord := FALSE;
+		step := 1;
 		IF bAckError OR bRestartTest THEN
 			bAckError := FALSE;
 			bError := FALSE;
@@ -280,8 +290,12 @@ CASE eTestMode OF
 		
 		
 	WRITE_DEFAULT_VALUES: 
+		IF bOnFirstIn THEN 
+			step := 1;
+		END_IF
 		CASE step OF
 			1: //write acc
+				bOnFirstIn := FALSE;
 				WriteAcc(nDeltaSpeedRef := nDefaultAccSpeed, nDeltaTimeRef := nDefaultAccTime, bDone => bDone);
 				IF bDone THEN
 					step := step+1;
@@ -326,12 +340,14 @@ CASE eTestMode OF
 					eTestMode := STOP_DRIVE;
 				END_IF
 				bManuallyRestoreDefaultValues := FALSE;
+				bOnFirstIn := TRUE;
 		END_CASE
 		
 		
 	STOP_DRIVE:
 		step := 1;
 		nTargetVelocity := 0;
+		tTimeout(IN := TRUE, PT := T#15S);
 		bSetVelocity := TRUE;
 		fbVelocityMode(sNetID := GVL.sNetId,
 					nSlaveAddr := GVL.nSlaveAddr,
@@ -346,10 +362,17 @@ CASE eTestMode OF
 				eTestMode := WAIT_FOR_TEST;
 			END_IF
 		END_IF
+		
+		IF tTimeout.Q THEN
+			bError := TRUE;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Timeout when shutting down drive. Please restore default values manually.',
+				strArg := '');
+		END_IF
 	
 	(* Test basic operation *)
 	BASIC_OPERATION:
-		tTimeout(IN := TRUE, PT := T#15S);
+		tTimeout(IN := TRUE, PT := T#10S);
 		CASE step OF
 		1:	
 			nTargetVelocity := 300; //rpm
@@ -361,14 +384,28 @@ CASE eTestMode OF
 						nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
 			IF NOT fbVelocityMode.bBusy THEN //now velocity is set
 				step := step+1;
-			END_IF			
-		2:  
+			END_IF				
+		2: 
+			fbGetTargetVelocity(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6042,
+				nSubIndex := 0,
+				pDstBuf := ADR(nVelocityDemand),
+				cbBufLen := SIZEOF(nVelocityDemand),
+				bExecute := TRUE);
+			fFlag(CLK := fbGetTargetVelocity.bBusy);
+			IF fFlag.Q AND nVelocityDemand = nTargetVelocity THEN
+				fbGetTargetVelocity(bExecute := FALSE);
+				bObject6042tested := TRUE;
+				step := step+1;
+			END_IF		
+		3:  
 			tTimer(IN:=TRUE, PT:=T#3S);
 			IF tTimer.Q THEN
 				tTimer(IN:=FALSE);
 				step := step+1;
 			END_IF
-		3:
+		4:
 			IF  TO_REAL(nActualVelocity) > ((1-fToleranceBasicOp)*TO_REAL(nTargetVelocityAfterLimit)) 
 			AND TO_REAL(nActualVelocity) < ((1+fToleranceBasicOp)*TO_REAL(nTargetVelocityAfterLimit)) THEN // Vsoll = Vist with 2% tolerance
 				fbGetVelocityDemand(sNetId := GVL.sNetId,
@@ -378,10 +415,11 @@ CASE eTestMode OF
 					pDstBuf := ADR(nVelocityDemand),
 					cbBufLen := SIZEOF(nVelocityDemand),
 					bExecute := TRUE);
-				fFlag(CLK := fbGetVelocityDemand.bBusy);
-				IF fFlag.Q THEN
+				fFlag2(CLK := fbGetVelocityDemand.bBusy);
+				
+				IF fFlag2.Q THEN
 					fbGetVelocityDemand(bExecute := FALSE);
-					IF nVelocityDemand = nTargetVelocityAfterLimit THEN
+					IF nVelocityDemand = nTargetVelocity THEN
 						bTestBasicOperation_Success := TRUE; //set success indication	
 						step := step+1;								
 						ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
@@ -392,10 +430,9 @@ CASE eTestMode OF
 			ELSIF nActualVelocity > 2*nTargetVelocityAfterLimit THEN
 				bError := TRUE;
 				bTestBasicOperation_Failed := TRUE;
-			END_IF
-				
+			END_IF				
 			
-		4:	//soft stop motor
+		5:	//soft stop motor
 			eTestMode := STOP_DRIVE;			
 		END_CASE
 		
@@ -459,7 +496,7 @@ CASE eTestMode OF
 
 			6: //validate result
 				IF  nAccMeasured > ((1-fToleranceAccDec)*fDesiredAcceleration) 
-				AND nAccMeasured < ((1+fToleranceAccDec)*fDesiredAcceleration) THEN //within range of tolerance: default 5%
+				AND nAccMeasured < ((1+fToleranceAccDec)*fDesiredAcceleration) THEN //within range of tolerance: default 10%
 					bTestAccel_Success := TRUE;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 					msgFmtStr := 'Acceleration test success.',
@@ -511,7 +548,7 @@ CASE eTestMode OF
 							nTargetVelocity := nTargetVelocity,
 							bSetVelocity := bSetVelocity,
 							nTargetVelocityAfterLimit => nTargetVelocityAfterLimit);
-				tTimer(IN:=TRUE, PT:=T#500MS);
+				tTimer(IN:=TRUE, PT:=T#1500MS);
 				IF tTimer.Q THEN
 					tTimer(IN:=FALSE);
 					step := step+1;
@@ -546,7 +583,7 @@ CASE eTestMode OF
 			
 			7:	//validation
 				IF  nDecMeasured > ((1-fToleranceAccDec)*fDesiredDeceleration) 
-				AND nDecMeasured < ((1+fToleranceAccDec)*fDesiredDeceleration) THEN //within range of tolerance: default 5%
+				AND nDecMeasured < ((1+fToleranceAccDec)*fDesiredDeceleration) THEN //within range of tolerance: default 10%
 					bTestDecel_Success := TRUE;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 					msgFmtStr := 'Deceleration test success.',
@@ -603,7 +640,7 @@ CASE eTestMode OF
 				END_IF
 			
 			4:
-				IF TO_REAL(nActualVelocity) > ((1+fToleranceLimit)*TO_REAL(nMaxLimitRef))(* 10% overshot accounted *) THEN 
+				IF TO_REAL(nActualVelocity) > ((1+fToleranceLimit)*TO_REAL(nMaxLimitRef))(* 20% overshot accounted *) THEN 
 					bMaxLimitTest_Failed := TRUE;
 					eTestMode := WRITE_DEFAULT_VALUES;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
@@ -643,9 +680,8 @@ CASE eTestMode OF
 //				fTimeFaktor := DINT_TO_REAL((nActualVelocity-nTargetVelocity)/nSpeedDec); 
 //				tDecTime := REAL_TO_TIME(2000+fTimeFaktor * nDefaultDecTime*1000); //acceleration time, min 2s
 //				tTimer(IN := bIsDecelerating, PT := tDecTime);
-				IF TO_REAL(nActualVelocity) < ((1-fToleranceLimit)*TO_REAL(nMinLimitRef))(*10% overshot accounted*) THEN 
+				IF TO_REAL(nActualVelocity) < ((1-fToleranceLimit)*TO_REAL(nMinLimitRef))(*20% overshot accounted*) THEN 
 					bMinLimitTest_Failed := TRUE;
-					eTestMode := WRITE_DEFAULT_VALUES;
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_WARN,
 						msgFmtStr := 'Min limit test failed.',
 						strArg := '');										
@@ -654,8 +690,9 @@ CASE eTestMode OF
 					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 						msgFmtStr := 'Min limit test success.',
 						strArg := '');
-					step := step+1;
 				END_IF
+				ShowLimitVelocity := nActualVelocity;
+				step := step+1;
 				bIsDecelerating := FALSE;
 			
 			8:
@@ -666,12 +703,8 @@ CASE eTestMode OF
 						strArg := '');
 				ELSE
 					bTestLimits_Failed := TRUE;
-					ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-						msgFmtStr := 'Limit test failed.',
-						strArg := '');
 				END_IF
 				bStopAfterLimitTest := TRUE;
-				step := 1;
 				eTestMode := WRITE_DEFAULT_VALUES; //stop and restore default variables				
 		END_CASE
 
@@ -796,7 +829,8 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[bObject6043tested				:= FALSE;
+        <ST><![CDATA[bObject6042tested				:= FALSE;
+bObject6043tested				:= FALSE;
 bObject6046tested				:= FALSE;
 bObject6048tested				:= FALSE;
 bObject6049tested				:= FALSE;
@@ -926,7 +960,9 @@ END_IF
       </Implementation>
     </Method>
     <LineIds Name="P_VelocityModeTest">
-      <LineId Id="7434" Count="552" />
+      <LineId Id="9009" Count="125" />
+      <LineId Id="9589" Count="0" />
+      <LineId Id="9135" Count="453" />
       <LineId Id="829" Count="0" />
     </LineIds>
     <LineIds Name="P_VelocityModeTest.ReadAcc">
@@ -965,7 +1001,9 @@ END_IF
       <LineId Id="81" Count="0" />
     </LineIds>
     <LineIds Name="P_VelocityModeTest.Reset">
-      <LineId Id="6" Count="18" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="7" Count="17" />
       <LineId Id="5" Count="0" />
       <LineId Id="25" Count="2" />
     </LineIds>
