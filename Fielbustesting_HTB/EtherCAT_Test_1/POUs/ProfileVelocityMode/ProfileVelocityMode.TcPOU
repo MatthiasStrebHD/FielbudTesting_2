@@ -16,6 +16,7 @@ VAR_IN_OUT
 	nTargetVelocity			: DINT;
 END_VAR
 VAR
+	nMagicFactor	: REAL := 1092; //TODO delete as soon as new Firmware Update fixes this bug
 	eMotionState			: (WAIT_FOR_TRIGGER, ENABLE_DEVICE, WAIT_FOR_NEW_VELOCITY, SET_LIMIT, SET_VELOCITY, VALIDATE_VELOCITY, ACKNOWLEDGE_VELOCITY);
 	fbEnableDevice			: FB_EnableDevice;
 	fbSetProfileVelocity			: FB_EcCoeSdoWrite;
@@ -47,14 +48,14 @@ END_VAR]]></Declaration>
 END_IF
 
 ReadLimits();
-bBusy := TRUE; //FB VelocityMode is busy and the target velocity is not jet set
+bBusy := TRUE; //FB VelocityMode is busy and the target velocity is not jet set. Will be reset in Wait_for_new_velocity!
 
 fbSetProfileVelocity(sNetId := sNetID,
 			nSlaveAddr := nSlaveAddr,
 			nSubIndex := 0,
 			nIndex := 16#60FF,
-			pSrcBuf := ADR(nVelocityBuff),
-			cbBufLen := SIZEOF(nVelocityBuff),
+			pSrcBuf := ADR(nTargetVelocity),
+			cbBufLen := SIZEOF(nTargetVelocity),
 			bExecute := bWriteToFB);
 				
 	
@@ -85,10 +86,11 @@ CASE eMotionState OF
 			END_IF
 		END_IF
 		
-		
+
 	WAIT_FOR_NEW_VELOCITY:
 		IF nTargetVelocity <> nVelocityBuff THEN
 			eMotionState := SET_VELOCITY;
+			nTargetVelocity := TO_DINT(TO_REAL(nTargetVelocity)*nMagicFactor);
 		ELSE
 			bSetVelocity := FALSE;
 			bBusy := FALSE; //FB 
@@ -108,7 +110,6 @@ CASE eMotionState OF
 				strArg := '');
 			eMotionState := WAIT_FOR_TRIGGER;
 		END_IF
-		
 		IF fFlag.Q THEN
 			eMotionState := VALIDATE_VELOCITY;
 		END_IF
@@ -137,6 +138,7 @@ CASE eMotionState OF
 			END_IF
 			fbGetStatusword(bExecute := FALSE);
 			bWriteToFB := FALSE;
+			nVelocityBuff := nTargetVelocity; 
 			eMotionState := WAIT_FOR_NEW_VELOCITY;
 		END_IF
 		
@@ -172,9 +174,14 @@ END_IF]]></ST>
       </Implementation>
     </Method>
     <LineIds Name="ProfileVelocityMode">
-      <LineId Id="1701" Count="53" />
-      <LineId Id="1781" Count="42" />
-      <LineId Id="1825" Count="5" />
+      <LineId Id="1701" Count="48" />
+      <LineId Id="1870" Count="1" />
+      <LineId Id="1751" Count="3" />
+      <LineId Id="1781" Count="14" />
+      <LineId Id="1797" Count="26" />
+      <LineId Id="1825" Count="0" />
+      <LineId Id="1867" Count="0" />
+      <LineId Id="1826" Count="4" />
       <LineId Id="19" Count="0" />
     </LineIds>
     <LineIds Name="ProfileVelocityMode.ReadLimits">

@@ -386,7 +386,7 @@ IF bTestSupportedPPObjects AND bTestRelativePositioningFinished THEN
 					nMinPositionRangeLimitTest := nMinPositionRangeLimit;
 					nMaxPositionRangeLimitTest := nMaxPositionRangeLimit;
 					bSetPositionRangeLimit := TRUE;
-					IF ftSetPositionRangeLimit THEN
+					IF ftSetPositionRangeLimit.Q THEN
 						eTestSupportedPPObjects := SOFTWARE_POSITION_LIMIT;
 					END_IF	
 			END_CASE

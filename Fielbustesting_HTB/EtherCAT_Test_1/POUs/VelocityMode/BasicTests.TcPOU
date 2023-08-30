@@ -3,24 +3,102 @@
   <POU Name="BasicTests" Id="{9cc815f1-e038-4b96-a0f9-bc6181ca148a}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM BasicTests
 VAR
-	fbProfileVelocityMode : FB_EcCoeSdoWrite;
-	nTargetVelocity : DINT := 500;
-	bSetVelocity: BOOL;
+	bSetVelocity			: BOOL;
+	bStop					: BOOL;
+	nTargetVelocity 		: DINT := 1000;
+	fbGetStatusword			: FB_EcCoeSdoRead;
+	fbSetVelocityWindow 	: FB_EcCoeSdoWrite;
+	fbSetVelocityWindowTime	: FB_EcCoeSdoWrite;
+	fbProfileVelocityMode 	: ProfileVelocityMode;
+	nStatusWord				: DINT;
+	bGetStatusword			: BOOL;
+	tGetStatusword: TON;
+	bTargetReached: BOOL;
+	bSpeedIsZero: BOOL;
+	nVelocityWindow		: DINT := 50;
+	bSetVelocityWindow: BOOL;
+	nVelocityWindowTime: DINT := 100;
 END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[fbProfileVelocityMode(sNetId := GVL.sNetId,
-		nSlaveAddr := GVL.nSlaveAddr,
-		nIndex := 16#60FF,
-		nSubindex := 0,
-		pSrcBuf := ADR(nTargetVelocity),
-		cbBufLen := SIZEOF(nTargetVelocity),
-		bExecute := bSetVelocity);	
+      <ST><![CDATA[
+fbProfileVelocityMode(sNetID := GVL.sNetId,
+					nSlaveAddr := GVL.nSlaveAddr,
+					nTargetVelocity := nTargetVelocity,
+					bSetVelocity := bSetVelocity);	
 			
-]]></ST>
+IF bStop THEN
+	MAIN.Controlword := 0;
+	GVL.bReset := TRUE;
+	bStop := FALSE;
+END_IF
+
+tGetStatusword(IN := bGetStatusword,
+					PT := T#50MS);	
+IF tGetStatusword.Q THEN
+	bGetStatusword := FALSE;
+ELSE
+	bGetStatusword := TRUE;		
+END_IF
+// set parameter
+fbSetVelocityWindow(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nIndex := 16#606D,
+						nSubindex := 0,
+						pSrcBuf := ADR(nVelocityWindow),
+						cbBufLen := SIZEOF(nVelocityWindow),
+						bExecute := bSetVelocityWindow);
+fbSetVelocityWindow(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nIndex := 16#606F,
+						nSubindex := 0,
+						pSrcBuf := ADR(nVelocityWindow),
+						cbBufLen := SIZEOF(nVelocityWindow),
+						bExecute := bSetVelocityWindow);
+						
+fbSetVelocityWindowTime(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nIndex := 16#606E,
+						nSubindex := 0,
+						pSrcBuf := ADR(nVelocityWindowTime),
+						cbBufLen := SIZEOF(nVelocityWindowTime),
+						bExecute := bSetVelocityWindow);
+fbSetVelocityWindowTime(sNetId := GVL.sNetId,
+						nSlaveAddr := GVL.nSlaveAddr,
+						nIndex := 16#6070,
+						nSubindex := 0,
+						pSrcBuf := ADR(nVelocityWindowTime),
+						cbBufLen := SIZEOF(nVelocityWindowTime),
+						bExecute := bSetVelocityWindow);
+//end set parameters
+
+fbGetStatusword(sNetId := GVL.sNetId,
+				nSlaveAddr := GVL.nSlaveAddr,
+				nIndex := 16#6041,
+				nSubindex := 0,
+				pDstBuf := ADR(nStatusWord),
+				cbBufLen := SIZEOF(nStatusWord),
+				bExecute := bGetStatusword);
+				
+IF nStatusWord.10 THEN
+	bTargetReached := TRUE;
+ELSE
+	bTargetReached := FALSE;
+END_IF				
+IF nStatusWord.12 THEN
+	bSpeedIsZero := TRUE;
+ELSE
+	bSpeedIsZero := FALSE;
+END_IF]]></ST>
     </Implementation>
     <LineIds Name="BasicTests">
-      <LineId Id="778" Count="7" />
-      <LineId Id="526" Count="0" />
+      <LineId Id="1146" Count="0" />
+      <LineId Id="956" Count="17" />
+      <LineId Id="1117" Count="13" />
+      <LineId Id="981" Count="0" />
+      <LineId Id="1131" Count="13" />
+      <LineId Id="1108" Count="8" />
+      <LineId Id="990" Count="10" />
+      <LineId Id="840" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>

@@ -46,4 +46,12 @@
 			</TaskPouOids>
 		</Instance>
 	</Project>
+	<Mappings>
+		<OwnerA Name="EtherCAT_Test_1 Instance">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Drive 5 (HTB)">
+				<Link VarA="PlcTask Inputs^MAIN.Statusword" VarB="Module 1 (pt - axis)^Inputs^Status Word"/>
+				<Link VarA="PlcTask Outputs^MAIN.Controlword" VarB="Module 1 (pt - axis)^Outputs^Control Word"/>
+			</OwnerB>
+		</OwnerA>
+	</Mappings>
 </TcSmItem>
