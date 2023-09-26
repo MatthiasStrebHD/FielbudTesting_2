@@ -16,10 +16,9 @@ VAR_IN_OUT
 	nTargetVelocity			: DINT;
 END_VAR
 VAR
-	nMagicFactor	: REAL := 1092; //TODO delete as soon as new Firmware Update fixes this bug
 	eMotionState			: (WAIT_FOR_TRIGGER, ENABLE_DEVICE, WAIT_FOR_NEW_VELOCITY, SET_LIMIT, SET_VELOCITY, VALIDATE_VELOCITY, ACKNOWLEDGE_VELOCITY);
 	fbEnableDevice			: FB_EnableDevice;
-	fbSetProfileVelocity			: FB_EcCoeSdoWrite;
+	fbSetProfileVelocity	: FB_EcCoeSdoWrite;
 	fbGetStatusword			: FB_EcCoeSdoRead;
 	fbGetVelocityLimitMin	: FB_EcCoeSdoRead;
 	fbGetVelocityLimitMax	: FB_EcCoeSdoRead;
@@ -90,7 +89,8 @@ CASE eMotionState OF
 	WAIT_FOR_NEW_VELOCITY:
 		IF nTargetVelocity <> nVelocityBuff THEN
 			eMotionState := SET_VELOCITY;
-			nTargetVelocity := TO_DINT(TO_REAL(nTargetVelocity)*nMagicFactor);
+			(* TODO delete this as soon as a functioning version of the control by AlliedMotion is published *)
+			nTargetVelocity := nTargetVelocity;
 		ELSE
 			bSetVelocity := FALSE;
 			bBusy := FALSE; //FB 
@@ -124,23 +124,21 @@ CASE eMotionState OF
 			pDstBuf := ADR(nStatusword),
 			cbBufLen := SIZEOF(nStatusword),
 			bExecute := bGetStatusword);
-		fFlag(CLK := fbGetStatusword.bBusy);
-		IF fFlag.Q THEN
-			IF nStatusword.4 THEN
+
+		IF nStatusword.4 THEN // voltage on
 //				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
 //				msgFmtStr := 'Velocity is valid',
 //				strArg := '');
-			ELSE 
-				bSuccess := FALSE;
-				ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
-					msgFmtStr := 'Error when validating velocity. Controlword not set.',
-					strArg := '');
-			END_IF
-			fbGetStatusword(bExecute := FALSE);
-			bWriteToFB := FALSE;
-			nVelocityBuff := nTargetVelocity; 
-			eMotionState := WAIT_FOR_NEW_VELOCITY;
+		ELSE 
+			bSuccess := FALSE;
+			ADSLOGSTR(msgCtrlMask := ADSLOG_MSGTYPE_HINT,
+				msgFmtStr := 'Error when validating velocity. Controlword not set.',
+				strArg := '');
 		END_IF
+		fbGetStatusword(bExecute := FALSE);
+		bWriteToFB := FALSE;
+		nVelocityBuff := nTargetVelocity; 
+		eMotionState := WAIT_FOR_NEW_VELOCITY;
 		
 END_CASE
 
@@ -175,13 +173,17 @@ END_IF]]></ST>
     </Method>
     <LineIds Name="ProfileVelocityMode">
       <LineId Id="1701" Count="48" />
-      <LineId Id="1870" Count="1" />
+      <LineId Id="1870" Count="0" />
+      <LineId Id="1909" Count="0" />
+      <LineId Id="1871" Count="0" />
       <LineId Id="1751" Count="3" />
       <LineId Id="1781" Count="14" />
-      <LineId Id="1797" Count="26" />
+      <LineId Id="1797" Count="13" />
+      <LineId Id="1812" Count="11" />
       <LineId Id="1825" Count="0" />
       <LineId Id="1867" Count="0" />
-      <LineId Id="1826" Count="4" />
+      <LineId Id="1826" Count="0" />
+      <LineId Id="1828" Count="2" />
       <LineId Id="19" Count="0" />
     </LineIds>
     <LineIds Name="ProfileVelocityMode.ReadLimits">
